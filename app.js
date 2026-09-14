@@ -4,11 +4,12 @@
   const app = document.querySelector('#app'), modal = document.querySelector('#modal');
   const STORAGE_KEY = 'pinyin-forest-train-v1';
   let storageAvailable = true, saved;
-  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { storageAvailable = false; }
+  try { const raw=localStorage.getItem(STORAGE_KEY); try {saved=JSON.parse(raw);} catch {saved=null;} }
+  catch { storageAvailable = false; }
   let progress = C.restore(saved, D);
   let view = 'map', selected = 'initials', book = 'initials', round = null, reward = null;
   let toastTimer, audioSerial = 0, lastFocus, audioError = '', audioPlaying = false;
-  const player = new Audio(); player.preload = 'auto';
+  const player = document.querySelector('#game-audio');
   const animals = ['🐰','🐿️','🐻','🦊','🐼'];
   const station = id => D.stations.find(s => s.id === id);
   const currentQuestion = () => round?.questions[round.index];
@@ -90,7 +91,7 @@
     const s = station(selected);
     return `<main>
       <section class="intro"><div><div class="eyebrow">叮叮！森林专列准备出发</div><h1>小小列车长，今天去哪儿？</h1><p>听一听，接上小动物，一起开启拼音之旅。</p></div><span class="soft-pill">☀️ 每次一小站，快乐学拼音</span></section>
-      <div class="landscape"><img src="assets/train-forest.png" alt="兔子列车长开着绿色小火车，载着森林动物经过花丛和小车站" fetchpriority="high"><span class="scene-label">🌿 森林专列 · 欢迎上车</span><span class="scene-note">接满 <strong>5 位乘客</strong>，带一张贴纸回家 🎁</span></div>
+      <div class="landscape"><img src="assets/train-forest.png" alt="兔子列车长开着绿色小火车，载着森林动物经过花丛和小车站" fetchpriority="high"><span class="scene-label">🌿 森林专列 · 欢迎上车</span><span class="scene-note">接满 <strong>5 位乘客</strong>，带一张贴纸回家 🎁</span><button class="primary scene-start" data-action="start">出发，接乘客！${icon('arrow')}</button></div>
       <section aria-labelledby="station-heading"><div class="section-heading"><h2 id="station-heading">${icon('map')} 选择你的下一站</h2><span>5 个车站 · 都是学过的朋友</span></div>
       <div class="station-grid">${D.stations.map((st,i) => {const seen = progress.seen[st.id]?.length || 0;return `<button class="station-card ${selected===st.id?'selected':''}" style="--station-bg:${st.color};--station-accent:${st.accent}" data-action="select" data-id="${st.id}" aria-pressed="${selected===st.id}" aria-label="选择${st.name}，${st.items.length}个练习内容"><div class="station-top"><span class="station-num">第 ${['一','二','三','四','五'][i]} 站</span><span class="station-check">${selected===st.id?'●':progress.completed[st.id]?'✓':''}</span></div><div class="station-art" aria-hidden="true">${st.emoji}</div><h3>${st.name}</h3><p class="sample pinyin" lang="zh-Latn">${st.sample}</p><div class="station-count"><span>${st.items.length} 个${st.id==='tones'?'声调':'拼音'}</span><span>${seen?`已练 ${seen} 个`:'等你来玩'}</span></div><div class="mini-progress"><i style="width:${seen/st.items.length*100}%"></i></div></button>`;}).join('')}</div></section>
       <div class="departure"><div class="departure-copy"><span class="emoji" aria-hidden="true">${s.emoji}</span><div><strong>下一站：${s.name}</strong><p>${s.desc} · 每轮 5 题</p></div></div><button class="primary" data-action="start">出发，接乘客！${icon('arrow')}</button></div>
