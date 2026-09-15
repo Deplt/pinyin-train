@@ -44,10 +44,23 @@
     {id:'tones',name:'声调彩虹站',short:'声调与标调规则',emoji:'🌈',color:'#ffe9e1',accent:'#b7684c',sample:'ā á ǎ à',desc:'坐上声音滑梯，听一听四声的变化',tip:'一声平，二声扬，三声拐弯，四声降。',items:tones}
   ];
   const stickers = [
+    // Saved collections refer to these IDs. Keep released IDs and order; append new friends only.
     ['rabbit','🐰','兔子列车长'],['squirrel','🐿️','松鼠好朋友'],['bear','🐻','森林小熊'],
     ['panda','🐼','竹林熊猫'],['fox','🦊','聪明小狐狸'],['deer','🦌','花园小鹿'],
     ['owl','🦉','智慧猫头鹰'],['hedgehog','🦔','勇敢小刺猬'],['frog','🐸','池塘歌唱家'],
-    ['lion','🦁','阳光小狮子'],['penguin','🐧','快乐小企鹅'],['unicorn','🦄','彩虹独角兽']
+    ['lion','🦁','阳光小狮子'],['penguin','🐧','快乐小企鹅'],['unicorn','🦄','彩虹独角兽'],
+    ['cat','🐱','花园小猫'],['dog','🐶','热心小狗'],['tiger','🐯','勇气小老虎'],
+    ['elephant','🐘','大象好伙伴'],['giraffe','🦒','长颈鹿向导'],['zebra','🦓','条纹小斑马'],
+    ['monkey','🐵','机灵小猴子'],['koala','🐨','抱抱考拉'],['sloth','🦥','慢慢小树懒'],
+    ['raccoon','🦝','探险小浣熊'],['otter','🦦','水獭游泳家'],['beaver','🦫','河狸小工匠'],
+    ['hippo','🦛','河马大朋友'],['rhino','🦏','犀牛守护者'],['kangaroo','🦘','蹦蹦小袋鼠'],
+    ['camel','🐪','沙漠小骆驼'],['horse','🐴','草原小马'],['cow','🐮','牧场小奶牛'],
+    ['sheep','🐑','绵绵小羊'],['pig','🐷','开心小猪'],['alpaca','🦙','软软羊驼'],
+    ['duck','🦆','池塘小鸭'],['chick','🐥','叽叽小鸡'],['parrot','🦜','鹦鹉歌唱家'],
+    ['peacock','🦚','漂亮小孔雀'],['swan','🦢','湖畔小天鹅'],['turtle','🐢','坚持小乌龟'],
+    ['dolphin','🐬','海豚领航员'],['whale','🐳','喷水小鲸鱼'],['seal','🦭','拍手小海豹'],
+    ['octopus','🐙','章鱼小画家'],['crab','🦀','横走小螃蟹'],['fish','🐠','珊瑚小鱼'],
+    ['butterfly','🦋','蝴蝶舞蹈家'],['bee','🐝','勤劳小蜜蜂'],['ladybug','🐞','花间小瓢虫']
   ].map(([id,emoji,name]) => ({id,emoji,name}));
   const data = { stations, stickers, toneNames };
   root.PinyinData = data;
