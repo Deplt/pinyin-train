@@ -9,6 +9,7 @@
   let progress = C.restore(saved, D);
   let view = 'map', selected = 'initials', book = 'initials', round = null, reward = null;
   let toastTimer, audioSerial = 0, lastFocus, audioError = '', audioPlaying = false;
+  let restaurant = null;
   const player = document.querySelector('#game-audio');
   const animals = ['🐰','🐿️','🐻','🦊','🐼'];
   const station = id => D.stations.find(s => s.id === id);
@@ -38,6 +39,7 @@
     toastTimer = setTimeout(() => el.classList.remove('visible'),3400);
   }
   function stopAudio() {
+    restaurant?.stopAudio();
     audioSerial++; player.pause(); player.removeAttribute('src'); player.load();
     audioPlaying = false; updateAudioUI();
   }
@@ -80,11 +82,13 @@
   const voice = name => {if(progress.sound) void playFile(`assets/voice/${name}.wav`);};
   const playItem = (item, question) => playFile(`assets/audio/${encodeURIComponent(item.audio)}.mp3`,{question,phonetic:true});
   function header() {
-    const nav = [['map','map','冒险地图'],['stickers','star','我的贴纸'],['book','book','复习小书']];
+    const nav = [['map','map','冒险地图'],['restaurant','restaurant','动物餐厅'],['stickers','star','我的贴纸'],['book','book','复习小书']];
+    const cafeStatus=view==='restaurant'?restaurant.status():null;
+    const sound=cafeStatus?cafeStatus.sound:progress.sound;
     return `<header class="topbar">
       <button class="brand" data-action="nav" data-view="map" aria-label="拼音小火车，回到冒险地图"><span class="brand-icon" aria-hidden="true">🚂</span><span><strong>拼音小火车</strong><small>森林出发啦 · PINYIN EXPRESS</small></span></button>
       <nav class="nav" aria-label="主要导航">${nav.map(([key,i,label]) => `<button data-action="nav" data-view="${key}" class="${view === key ? 'active' : ''}" ${view===key?'aria-current="page"':''}>${icon(i)}${label}</button>`).join('')}</nav>
-      <div class="header-actions"><span class="star-counter" aria-label="已收集 ${progress.stars} 颗星星">⭐ <b id="stars">${progress.stars}</b></span><button class="icon-button" data-action="sound" id="sound-button" aria-label="${progress.sound?'关闭':'开启'}声音" aria-pressed="${progress.sound}">${icon(progress.sound?'sound':'mute')}</button></div>
+      <div class="header-actions"><span class="star-counter" aria-label="${cafeStatus?`餐厅已接待 ${cafeStatus.served} 位客人`:`小火车已收集 ${progress.stars} 颗星星`}">${cafeStatus?'♥':'⭐'} <b id="stars">${cafeStatus?cafeStatus.served:progress.stars}</b></span><button class="icon-button" data-action="sound" id="sound-button" aria-label="${sound?'关闭':'开启'}声音" aria-pressed="${sound}">${icon(sound?'sound':'mute')}</button></div>
     </header>`;
   }
   function mapPage() {
@@ -96,6 +100,7 @@
       <div class="station-grid">${D.stations.map((st,i) => {const seen = progress.seen[st.id]?.length || 0;return `<button class="station-card ${selected===st.id?'selected':''}" style="--station-bg:${st.color};--station-accent:${st.accent}" data-action="select" data-id="${st.id}" aria-pressed="${selected===st.id}" aria-label="选择${st.name}，${st.items.length}个练习内容"><div class="station-top"><span class="station-num">第 ${['一','二','三','四','五'][i]} 站</span><span class="station-check">${selected===st.id?'●':progress.completed[st.id]?'✓':''}</span></div><div class="station-art" aria-hidden="true">${st.emoji}</div><h3>${st.name}</h3><p class="sample pinyin" lang="zh-Latn">${st.sample}</p><div class="station-count"><span>${st.items.length} 个${st.id==='tones'?'声调':'拼音'}</span><span>${seen?`已练 ${seen} 个`:'等你来玩'}</span></div><div class="mini-progress"><i style="width:${seen/st.items.length*100}%"></i></div></button>`;}).join('')}</div></section>
       <div class="departure"><div class="departure-copy"><span class="emoji" aria-hidden="true">${s.emoji}</span><div><strong>下一站：${s.name}</strong><p>${s.desc} · 每轮 5 题</p></div></div><button class="primary" data-action="start">出发，接乘客！${icon('arrow')}</button></div>
       <footer class="footnote"><span>💛 慢慢来，可以反复听，答错也没关系。</span><button class="text-button" data-action="settings">${icon('settings')} 家长小贴士</button></footer>
+      <div class="cafe-stall-link"><div><strong>🧑‍🍳 森林里的小餐厅开张啦</strong><p>换上围裙，拼出好吃的，装饰自己的餐厅。两款游戏分别收集奖励。</p></div><button class="secondary" data-action="nav" data-view="restaurant">去当小厨师 →</button></div>
     </main>`;
   }
   function tripScene() {
@@ -125,7 +130,7 @@
     return `<main><div class="trip-top"><button class="text-button" data-action="nav" data-view="map">${icon('back')} 回到地图</button><span class="trip-title">🎉 ${station(round.stationId).name}，到站啦！</span></div><section class="complete">${Array.from({length:16},(_,i)=>`<span aria-hidden="true" class="confetti" style="--x:${5+i*6}%;--delay:${i%5*.1}s">${['⭐','✦','🌼','🍃'][i%4]}</span>`).join('')}<div class="complete-emoji" aria-hidden="true">${sticker?.emoji||'🏅'}</div><div class="eyebrow">今天的森林小礼物</div><h1>${sticker?`获得「${sticker.name}」贴纸！`:'小小列车长，又完成一趟！'}</h1><p>5 位小乘客都到站了，谢谢你的帮助。</p><div class="reward-line"><strong>⭐ +5 星星</strong><span>${sticker?'新贴纸已放进收藏册':'森林朋友为你鼓掌'}</span></div><p style="margin-bottom:12px;font-size:13px">这些是今天遇到的朋友，点一下再听听：</p><div class="round-review">${round.questions.map(q=>`<button class="pinyin" data-action="review" data-id="${q.target.id}" aria-label="复习 ${q.target.text}">${q.target.text}</button>`).join('')}</div><div class="complete-actions"><button class="primary" data-action="nav" data-view="stickers">看看我的贴纸${icon('star')}</button><button class="secondary" data-action="nav" data-view="map">返回冒险地图</button></div><p class="rest-note">一趟旅程完成啦，看看远处，休息一下吧 🌿</p></section></main>`;
   }
   function render() {
-    app.innerHTML = `<div class="shell">${header()}${view==='map'?mapPage():view==='game'?gamePage():view==='book'?bookPage():view==='reward'?rewardPage():stickersPage()}</div>`;
+    app.innerHTML = `<div class="shell">${header()}${view==='map'?mapPage():view==='restaurant'?restaurant.render():view==='game'?gamePage():view==='book'?bookPage():view==='reward'?rewardPage():stickersPage()}</div>`;
     updateAudioUI();
   }
   function updateSoundButton() {
@@ -151,13 +156,15 @@
     openModal(`${modalHeader('家长小贴士')}<div class="modal-copy"><p>五个车站对应您提供的五张学习图，所有车站都能直接进入。每轮 5 题，优先练习还没遇到的拼音。</p><p><strong>奖励规则</strong><br>接到一位乘客得 1 颗星星，完成一轮获得 1 张新动物贴纸，按顺序收集，共 ${D.stickers.length} 张。答错、重听和使用提示都不扣分。</p><p><strong>陪玩建议</strong><br>先一起听，再请孩子选车票。声母是教学呼读音；整体认读音节按整个音节听。听到后可以跟读，本版不使用麦克风评分。</p><p><strong>保存在哪里？</strong><br>记录保存在当前设备、当前浏览器。换手机或清除浏览器数据后，不会自动同步。${storageAvailable?'':'当前浏览器无法保存，请更换普通浏览模式。'}</p><p>拼音音频来源：<a href="https://github.com/cmguo/PinYinSound" target="_blank" rel="noopener noreferrer">PinYinSound</a>。语音引导为合成语音，学习图为家长提供。</p></div><div class="modal-row"><div><strong>听听游戏说明</strong><p>和孩子一起熟悉玩法</p></div><button class="secondary" data-action="howto">${icon('sound')} 播放</button></div><div class="modal-row"><div><strong>重新开始收藏</strong><p>会清空这台设备上的星星和贴纸</p></div><button class="secondary danger" data-action="reset-confirm">清空记录</button></div>`);
   }
   function navigate(next) {
-    if (!['map','book','stickers'].includes(next)) return;
+    if (!['map','book','stickers','restaurant'].includes(next)) return;
     if (view==='game' && round && !round.finished) {
       openModal(`${modalHeader('小火车要先停一会儿吗？')}<div class="modal-copy"><p>已经获得的星星会保留。这趟还没接满 5 位乘客，回到地图后会重新开始一轮。</p></div><div class="complete-actions"><button class="primary" data-action="close-modal">继续接乘客</button><button class="secondary" data-action="leave-confirm" data-view="${next}">先停一会儿</button></div>`);
     } else go(next);
   }
   function handleAction(el) {
     const action=el.dataset.action,id=el.dataset.id;
+    if(action.startsWith('cafe-')&&view==='restaurant')return restaurant.handleAction(el);
+    if(action==='sound'&&view==='restaurant')return restaurant.toggleSound();
     if(action==='nav') return navigate(el.dataset.view);
     if(action==='select') {selected=id;render();return;}
     if(action==='start') return start();
@@ -199,6 +206,8 @@
   document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAudio();});
   window.addEventListener('pagehide',()=>stopAudio());
   window.addEventListener('beforeunload',event=>{if(view==='game'&&round?.questions.some(q=>q.solved)&&!round.finished){event.preventDefault();event.returnValue='';}});
+  icons.restaurant='<path d="M4 3v7a3 3 0 0 0 6 0V3M7 3v18M16 3v8h4V3M20 11v10"/>';
+  restaurant=window.RestaurantGame.create({onChange:render,player:document.querySelector('#restaurant-audio')});
   render();
   // Optional browser-native agent support. The same validated actions power the UI.
   const modelContext=document.modelContext;
