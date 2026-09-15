@@ -6,7 +6,8 @@
     let saved,storageAvailable=true;
     try{storage=storage||root.localStorage;const raw=storage.getItem(C.STORAGE_KEY);try{saved=JSON.parse(raw);}catch{saved=null;}}catch{storageAvailable=false;}
     const p=C.restore(saved);
-    let screen='room',selectedCard=null,decorSlot='all',audioToken=0,audioError='',playing=false;
+    let screen='room',decorSlot='all',audioToken=0,audioError='',playing=false;
+    let drag=null,suppressClickUntil=0;
     const save=()=>{try{storage.setItem(C.STORAGE_KEY,JSON.stringify(p));}catch{storageAvailable=false;}};
     const current=()=>C.recipe(p.session?.orders[p.session.index].recipeId);
     const voice=name=>`assets/restaurant/voice/${name}.wav`;
@@ -15,7 +16,50 @@
       const status=document.querySelector('#cafe-audio-status');
       if(status)status.textContent=audioError||(playing?'正在读，跟着念一念吧。':'没听清？小喇叭可以反复点。');
     }
-    function stopAudio(){audioToken++;player?.pause();player?.removeAttribute('src');player?.load();playing=false;audioUI();}
+    function stopAudio(){cancelDrag();audioToken++;player?.pause();player?.removeAttribute('src');player?.load();playing=false;audioUI();}
+    function cancelDrag(){
+      if(!drag)return;
+      const d=drag;drag=null;
+      d.ghost?.remove();d.source.classList.remove('dragging');d.target?.classList.remove('drop-target');
+      if(d.moved)suppressClickUntil=Date.now()+500;
+      if(d.source.hasPointerCapture?.(d.pointerId))d.source.releasePointerCapture(d.pointerId);
+    }
+    function slotAt(x,y){return document.elementFromPoint(x,y)?.closest('[data-action="cafe-place"]')||null;}
+    document.addEventListener('pointerdown',event=>{
+      if(drag)return;
+      suppressClickUntil=0;
+      const source=event.target.closest('[data-action="cafe-pick"]');
+      if(!source||source.disabled||event.isPrimary===false||event.button!==0||screen!=='kitchen'||p.session?.phase!=='building')return;
+      drag={source,card:source.dataset.id,pointerId:event.pointerId,x:event.clientX,y:event.clientY,moved:false,session:p.session,index:p.session.index};
+      source.setPointerCapture?.(event.pointerId);
+    });
+    document.addEventListener('pointermove',event=>{
+      if(!drag||event.pointerId!==drag.pointerId)return;
+      if(!drag.moved&&Math.hypot(event.clientX-drag.x,event.clientY-drag.y)<8)return;
+      event.preventDefault();
+      if(!drag.moved){
+        drag.moved=true;drag.source.classList.add('dragging');
+        const ghost=document.createElement('div');ghost.className='cafe-drag-ghost pinyin';ghost.textContent=drag.card;ghost.setAttribute('aria-hidden','true');
+        document.body.appendChild(ghost);drag.ghost=ghost;
+      }
+      drag.ghost.style.left=`${event.clientX}px`;drag.ghost.style.top=`${event.clientY}px`;
+      const target=slotAt(event.clientX,event.clientY);
+      if(target!==drag.target){drag.target?.classList.remove('drop-target');target?.classList.add('drop-target');drag.target=target;}
+    },{passive:false});
+    document.addEventListener('pointerup',event=>{
+      if(!drag||event.pointerId!==drag.pointerId)return;
+      const d=drag,target=d.moved?slotAt(event.clientX,event.clientY):null;
+      if(d.moved)event.preventDefault();
+      cancelDrag();
+      if(d.moved&&target&&p.session===d.session&&p.session.index===d.index&&C.place(p,Number(target.dataset.index),d.card)){save();onChange();}
+    });
+    for(const type of ['pointercancel','lostpointercapture'])document.addEventListener(type,event=>{if(drag&&event.pointerId===drag.pointerId)cancelDrag();});
+    // A drag may be followed by a browser-generated click. Ignore that click,
+    // otherwise dropping on a filled slot could immediately clear the card again.
+    document.addEventListener('click',event=>{
+      if(event.detail!==0&&Date.now()<suppressClickUntil){event.preventDefault();event.stopImmediatePropagation();}
+    },true);
+    document.addEventListener('dragstart',event=>{if(event.target.closest('[data-action="cafe-pick"]'))event.preventDefault();});
     function play(sources,explicit=false){
       stopAudio();audioError='';
       if(explicit&&!p.sound){p.sound=true;save();onChange();}
@@ -64,11 +108,11 @@
       const building=s.phase==='building',served=s.phase==='served';
       return `<div class="cafe-trip-top"><button class="text-button" data-action="cafe-room">← 回到餐厅</button><span>${s.orders.map((_,i)=>`<span class="cafe-guest-dot ${i<s.index||i===s.index&&served?'served':''}">${i<s.index||i===s.index&&served?'✓':i+1}</span>`).join('')}</span><strong>第 ${s.index+1} / 3 位</strong></div>
         <section class="cafe-counter"><div class="cafe-customer" aria-hidden="true">${guest.emoji}</div><div class="cafe-order"><small>${guest.name}${served?'吃得很开心':'来点餐啦'}</small><h1>${served?'谢谢你，真好吃！':`我想${['tea','milk','soup'].includes(r.id)?'喝':'吃'}${r.word}！`}</h1><button class="cafe-listen" data-action="cafe-listen">🔊 ${served?'再听一次拼音':'听听点餐'}</button></div><div class="cafe-order-food" aria-hidden="true">${r.emoji}</div></section>
-        ${building?`<section class="cafe-prep"><h2>把两张拼音卡，放进小格子</h2><p class="cafe-instruction">${selectedCard?`选好了「${esc(selectedCard)}」，点一个格子放进去。`:'先点一张卡片，再点上面的空格。'}</p>
-          <div class="cafe-spelling">${s.picked.map((v,i)=>`${i?'<span class="cafe-plus" aria-hidden="true">＋</span>':''}<button class="cafe-slot pinyin ${v?'filled':''} ${selectedCard?'ready':''}" data-action="cafe-place" data-index="${i}" aria-label="第 ${i+1} 个拼音格${v?`，${esc(v)}`:'，空'}"><span>${esc(v||'?')}</span><small>${i?'韵母':'声母'}</small></button>`).join('')}</div>
+        ${building?`<section class="cafe-prep"><h2>点两张卡片，拼出好吃的</h2><p class="cafe-instruction">点一下，卡片自动入格；也可以拖进去。</p>
+          <div class="cafe-spelling">${s.picked.map((v,i)=>`${i?'<span class="cafe-plus" aria-hidden="true">＋</span>':''}<button class="cafe-slot pinyin ${v?'filled':''}" data-action="cafe-place" data-index="${i}" aria-label="第 ${i+1} 个拼音格${v?`，${esc(v)}，点一下取下`:'，空'}"><span>${esc(v||'?')}</span><small>${i?'韵母':'声母'}</small></button>`).join('')}</div>
           ${s.hinted?`<p class="cafe-hint" role="status">小提示：<span class="pinyin">${r.parts[0]} ＋ ${r.parts[1]} → ${r.pinyin}</span></p>`:''}
-          <div class="cafe-cards" role="group" aria-label="选择拼音卡片">${s.orders[s.index].cards.map(card=>`<button class="cafe-card pinyin ${selectedCard===card?'selected':''} ${s.hinted&&r.parts.includes(card)?'hinted':''}" data-action="cafe-pick" data-id="${esc(card)}" aria-label="拼音卡片 ${esc(card)}" aria-pressed="${selectedCard===card}">${esc(card)}</button>`).join('')}</div>
-          <p class="cafe-feedback" role="status" aria-live="polite">${s.checked?'差一点点，再听一听，换张卡片试试。':'放错也没关系，点格子可以取下来。'}</p>
+          <div class="cafe-cards" role="group" aria-label="选择拼音卡片">${s.orders[s.index].cards.map(card=>`<button class="cafe-card pinyin ${s.picked.includes(card)?'placed':''} ${s.hinted&&r.parts.includes(card)?'hinted':''}" data-action="cafe-pick" data-id="${esc(card)}" aria-label="拼音卡片 ${esc(card)}" aria-pressed="${s.picked.includes(card)}">${esc(card)}</button>`).join('')}</div>
+          <p class="cafe-feedback" role="status" aria-live="polite">${s.checked?'差一点点，再听一听，换张卡片试试。':'想换答案？直接点另一张卡；点格子可以取下来。'}</p>
           <div class="cafe-actions"><button class="text-button" data-action="cafe-hint">💡 帮我拼一拼</button><button class="primary cafe-primary" data-action="cafe-cook" ${s.picked.some(v=>v===null)?'disabled':''}>拼好了，做好吃的！</button></div></section>`:
           `<section class="cafe-dish ${served?'served':''}"><div class="cafe-plate" aria-hidden="true">${r.emoji}</div><h2>${served?'客人吃到好吃的啦！':'拼对啦，好吃的做好了！'}</h2><button class="cafe-blend pinyin" data-action="cafe-blend" aria-label="听拼读 ${r.pinyin}">${r.parts[0]} ＋ ${r.parts[1]} → <strong>${r.pinyin}</strong> <span>🔊</span></button><p>${served?'♥ 接待人数 +1，餐厅记录已经保存。':'听一听，跟着念，再端给小客人。'}</p><button class="primary cafe-primary" data-action="${served?'cafe-next':'cafe-serve'}">${served?'请下一位客人 →':`端给${guest.name} 🍽️`}</button></section>`}`;
     }
@@ -85,26 +129,26 @@
           return `<article class="cafe-decoration ${unlocked?'':'locked'} ${equipped?'equipped':''}"><span class="cafe-decoration-icon" aria-hidden="true">${d.emoji}</span><h2>${d.name}</h2><p>${unlocked?(d.guests?'努力得到的小礼物':'开店就有的小装备'):`再接待 ${Math.max(0,d.guests-p.served)} 位客人<br>再试 ${Math.max(0,d.foods-C.foods(p))} 道不同食物`}</p><button class="secondary" data-action="cafe-equip" data-id="${d.id}" ${!unlocked||equipped?'disabled':''}>${equipped?'✓ 正在用':unlocked?'用这个':'还在等你'}</button></article>`;
         }).join('')}</div><p class="cafe-parent-note">装饰同时看接待人数和不同食物的练习数。餐厅奖励独立保存，小火车的 48 张贴纸仍由小火车旅程获得。</p>`;
     }
-    function render(){return `<main class="cafe">${screen==='kitchen'?kitchen():screen==='decor'?decor():room()}<p id="cafe-audio-status" class="cafe-audio-status" role="status">${audioError||'没听清？小喇叭可以反复点。'}</p>${warning()}</main>`;}
+    function render(){cancelDrag();return `<main class="cafe">${screen==='kitchen'?kitchen():screen==='decor'?decor():room()}<p id="cafe-audio-status" class="cafe-audio-status" role="status">${audioError||'没听清？小喇叭可以反复点。'}</p>${warning()}</main>`;}
     function handleAction(el){
       const {action,id,index}=el.dataset;
-      if(action==='cafe-room'){stopAudio();screen='room';selectedCard=null;onChange();return;}
-      if(action==='cafe-start'){C.start(p);save();screen='kitchen';selectedCard=null;onChange();if(p.session.phase==='building')play([voice(`order-${current().id}`),phonetic(current().audio)]);return;}
+      if(action==='cafe-room'){stopAudio();screen='room';onChange();root.scrollTo({top:0,behavior:'instant'});return;}
+      if(action==='cafe-start'){C.start(p);save();screen='kitchen';onChange();root.scrollTo({top:0,behavior:'instant'});if(p.session.phase==='building')play([voice(`order-${current().id}`),phonetic(current().audio)]);return;}
       if(action==='cafe-decor'){stopAudio();screen='decor';onChange();return;}
       if(action==='cafe-filter'){if(['all',...D.slots.map(s=>s.id)].includes(id)){decorSlot=id;onChange();}return;}
       if(action==='cafe-equip'){if(C.equip(p,id)){save();onChange();}return;}
       if(action==='cafe-preview'){const r=C.recipe(id);if(r)play([phonetic(r.audio)],true);return;}
-      if(action==='cafe-howto'){play([voice('howto')],true);return;}
+      if(action==='cafe-howto'){play([voice('howto-tap-drag')],true);return;}
       if(screen!=='kitchen'||!p.session)return;
       const r=current();
       if(action==='cafe-listen'){play([voice(`order-${r.id}`),phonetic(r.audio)],true);return;}
       if(action==='cafe-blend'){play([...r.partAudio.map(phonetic),phonetic(r.audio)],true);return;}
-      if(action==='cafe-pick'&&p.session.phase==='building'&&p.session.orders[p.session.index].cards.includes(id)){selectedCard=selectedCard===id?null:id;onChange();return;}
-      if(action==='cafe-place'){if(selectedCard){if(C.place(p,Number(index),selectedCard))selectedCard=null;}else C.clear(p,Number(index));save();onChange();return;}
+      if(action==='cafe-pick'){if(C.pick(p,id)){const focused=document.activeElement===el;save();onChange();if(focused)document.querySelector(`[data-action="cafe-pick"][data-id="${id}"]`)?.focus({preventScroll:true});}return;}
+      if(action==='cafe-place'){if(C.clear(p,Number(index))){save();onChange();}return;}
       if(action==='cafe-hint'){if(C.hint(p)){save();onChange();play([...r.partAudio.map(phonetic),phonetic(r.audio)]);}return;}
       if(action==='cafe-cook'){const result=C.cook(p);if(result.accepted){save();onChange();play(result.correct?[...r.partAudio.map(phonetic),phonetic(r.audio)]:[voice('retry')]);}return;}
       if(action==='cafe-serve'){const result=C.serve(p);if(result){save();onChange();play([voice(result.done?'finished':'thanks')]);}return;}
-      if(action==='cafe-next'){if(C.next(p)){save();selectedCard=null;onChange();play([voice(`order-${current().id}`),phonetic(current().audio)]);}return;}
+      if(action==='cafe-next'){if(C.next(p)){save();onChange();root.scrollTo({top:0,behavior:'instant'});play([voice(`order-${current().id}`),phonetic(current().audio)]);}return;}
     }
     return {render,handleAction,stopAudio,toggleSound,status:()=>({served:p.served,sound:p.sound})};
   }

@@ -41,6 +41,14 @@
     if(!s||s.phase!=='building'||![0,1].includes(index)||!s.orders[s.index].cards.includes(card))return false;
     s.picked[index]=card;s.checked=false;return true;
   }
+  function pick(p,card){
+    const s=p.session;
+    if(!s||s.phase!=='building'||!s.orders[s.index].cards.includes(card))return false;
+    // Recipe cards keep [initial, final, alternative initial, alternative final].
+    // Only choose the slot type; a distractor is still a possible wrong answer.
+    const index=recipe(s.orders[s.index].recipeId).cards.indexOf(card)%2;
+    return place(p,index,card);
+  }
   function clear(p,index){if(!p.session||p.session.phase!=='building'||![0,1].includes(index))return false;p.session.picked[index]=null;p.session.checked=false;return true;}
   function hint(p){if(!p.session||p.session.phase!=='building')return false;p.session.hinted=true;return true;}
   function cook(p){
@@ -58,6 +66,6 @@
   }
   function next(p){const s=p.session;if(!s||s.phase!=='served')return false;s.index++;s.phase='building';s.picked=[null,null];s.hinted=false;s.checked=false;return true;}
   function equip(p,id){const d=D.decorations.find(d=>d.id===id);if(!d||!available(p,d))return false;p.equipped[d.slot]=d.id;return true;}
-  const api={STORAGE_KEY,defaults,restore,foods,available,recipe,start,place,clear,hint,cook,serve,next,equip};
+  const api={STORAGE_KEY,defaults,restore,foods,available,recipe,start,place,pick,clear,hint,cook,serve,next,equip};
   root.RestaurantCore=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof globalThis!=='undefined'?globalThis:window);
