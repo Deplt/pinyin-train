@@ -79,7 +79,7 @@
       audioError = '点一下喇叭开启声音；如果仍然没有声音，请检查手机音量。'; updateAudioUI();
     }
   }
-  const voice = name => {if(progress.sound) void playFile(`assets/voice/${name}.wav`);};
+  const voice = name => {if(progress.sound) void playFile(`assets/voice/${name}.mp3`);};
   const playItem = (item, question) => playFile(`assets/audio/${encodeURIComponent(item.audio)}.mp3`,{question,phonetic:true});
   function header() {
     const nav = [['map','map','冒险地图'],['restaurant','restaurant','动物餐厅'],['book','book','复习小书']];

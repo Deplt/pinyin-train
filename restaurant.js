@@ -10,7 +10,7 @@
     let drag=null,suppressClickUntil=0;
     const save=()=>{try{storage.setItem(C.STORAGE_KEY,JSON.stringify(p));}catch{storageAvailable=false;}};
     const current=()=>C.recipe(p.session?.orders[p.session.index].recipeId);
-    const voice=name=>`assets/restaurant/voice/${name}.wav`;
+    const voice=name=>`assets/restaurant/voice/${name}.mp3`;
     const phonetic=name=>`assets/audio/${encodeURIComponent(name)}.mp3`;
     function audioUI(){
       const status=document.querySelector('#cafe-audio-status');
