@@ -10,6 +10,7 @@
   let view = 'map', selected = 'initials', book = 'initials', round = null, reward = null;
   let toastTimer, audioSerial = 0, lastFocus, audioError = '', audioPlaying = false;
   let restaurant = null;
+  let autoAdvance = null;
   const player = document.querySelector('#game-audio');
   const animals = ['🐰','🐿️','🐻','🦊','🐼'];
   const station = id => D.stations.find(s => s.id === id);
@@ -38,6 +39,48 @@
     const el = document.querySelector('#toast'); el.textContent = text; el.classList.add('visible');
     toastTimer = setTimeout(() => el.classList.remove('visible'),3400);
   }
+  function clearAdvanceTimers(pending) {
+    if (!pending) return;
+    clearTimeout(pending.delayTimer); clearTimeout(pending.audioTimer);
+  }
+  function cancelAutoAdvance() {
+    clearAdvanceTimers(autoAdvance); autoAdvance = null;
+  }
+  function pauseAutoAdvance() {
+    if (!autoAdvance || autoAdvance.paused) return;
+    autoAdvance.paused = true; clearAdvanceTimers(autoAdvance);
+    if (view === 'game') {
+      const action = document.activeElement?.dataset?.action;
+      render();
+      if (action === 'listen' || action === 'pause-next') {
+        document.querySelector(`[data-action="${action === 'listen' ? 'listen' : 'next'}"]`)?.focus({preventScroll:true});
+      }
+    }
+  }
+  function advanceQuestion() {
+    if (view !== 'game' || modal.open || round?.finished || !currentQuestion()?.solved) return;
+    cancelAutoAdvance();
+    if (round.index === 4) {
+      reward = C.finish(round,progress,D.stickers);
+      if (reward) {save(); go('reward'); voice('arrived');}
+    } else {
+      round.index++; go('game');
+      if (progress.sound) void playItem(currentQuestion().target,currentQuestion());
+    }
+  }
+  function tryAutoAdvance(pending) {
+    if (autoAdvance !== pending || pending.paused || view !== 'game' || round !== pending.round || currentQuestion() !== pending.question) return;
+    if (document.hidden || modal.open) {pauseAutoAdvance(); return;}
+    if (pending.delayDone && pending.audioDone) advanceQuestion();
+  }
+  function scheduleAutoAdvance() {
+    cancelAutoAdvance();
+    const pending = autoAdvance = {round,question:currentQuestion(),paused:false,delayDone:false,audioDone:!progress.sound};
+    pending.delayTimer = setTimeout(() => {pending.delayDone = true; tryAutoAdvance(pending);},2000);
+    // A failed or stalled encouragement clip must not hold the child here forever.
+    pending.audioTimer = setTimeout(() => {pending.audioDone = true; tryAutoAdvance(pending);},6000);
+    return () => {pending.audioDone = true; tryAutoAdvance(pending);};
+  }
   function stopAudio() {
     restaurant?.stopAudio();
     audioSerial++; player.pause(); player.removeAttribute('src'); player.load();
@@ -55,17 +98,18 @@
     const bookStatus = document.querySelector('#book-audio-status');
     if (bookStatus) bookStatus.textContent = audioError || (audioPlaying ? '正在读，跟着念一念吧。' : '点一张小卡片，听听它的声音。');
   }
-  async function playFile(src, {question = null, phonetic = false} = {}) {
+  async function playFile(src, {question = null, phonetic = false, onComplete = null} = {}) {
     stopAudio(); const serial = audioSerial;
     audioError = '';
     if (!progress.sound) { progress.sound = true; save(); updateSoundButton(); }
     player.src = src;
-    player.onended = () => {if (serial === audioSerial) {audioPlaying = false; updateAudioUI();}};
+    player.onended = () => {if (serial === audioSerial) {audioPlaying = false; updateAudioUI(); onComplete?.();}};
     player.onerror = () => {
       if (serial !== audioSerial) return;
       audioPlaying = false;
       audioError = phonetic ? '声音暂时没播放出来，请再点一次喇叭。也可以请爸爸妈妈读一遍。' : '';
       updateAudioUI();
+      onComplete?.();
     };
     try {
       await player.play();
@@ -77,9 +121,10 @@
       if (serial !== audioSerial || e.name === 'AbortError') return;
       audioPlaying = false;
       audioError = '点一下喇叭开启声音；如果仍然没有声音，请检查手机音量。'; updateAudioUI();
+      onComplete?.();
     }
   }
-  const voice = name => {if(progress.sound) void playFile(`assets/voice/${name}.mp3`);};
+  const voice = (name, onComplete) => {if(progress.sound) void playFile(`assets/voice/${name}.mp3`,{onComplete});};
   const playItem = (item, question) => playFile(`assets/audio/${encodeURIComponent(item.audio)}.mp3`,{question,phonetic:true});
   function header() {
     const nav = [['map','map','冒险地图'],['restaurant','restaurant','动物餐厅'],['book','book','复习小书']];
@@ -110,15 +155,17 @@
   }
   function gamePage() {
     const s = station(round.stationId), q = currentQuestion();
+    const advancing = autoAdvance && !autoAdvance.paused;
     const hints = q.hinted ? `<div class="hint-picture"><span aria-hidden="true">${q.target.emoji}</span>${q.target.tone ? `${D.toneNames[q.target.tone-1]}，找找声调小帽子。` : `想一想学习图里的「${q.target.word}」`}</div>` : '';
     let feedback = q.solved ? `接到${['小兔','小松鼠','小熊','小狐狸','小熊猫'][round.index]}啦！真棒，送你一颗星星 ⭐` : q.mistakes.length ? '没关系，再听一次，换一张车票试试看。' : '哪张车票的拼音，和你听到的一样？';
     return `<main><div class="trip-top"><button class="text-button" data-action="leave">${icon('back')} 返回地图</button><span class="trip-title">${s.emoji} ${s.name}</span><span class="soft-pill">第 ${round.index+1} / 5 位乘客</span></div>${tripScene()}
-      <section class="game-panel"><p class="round-kicker">${animals[round.index]} 小乘客在等你</p><h1>${q.solved?'找到车票，欢迎上车！':q.target.tone?'听听声音，找对声调':'听一听，找到小乘客的车票'}</h1><p class="game-instruction">${q.target.tone?'字母一样，声音的高低不一样哦。':'先点小喇叭，再点一张拼音车票。'}</p>
+      <section class="game-panel"><p class="round-kicker">${animals[round.index]} ${q.solved?'小乘客坐好啦':'小乘客在等你'}</p><h1>${q.solved?'找到车票，欢迎上车！':q.target.tone?'听听声音，找对声调':'听一听，找到小乘客的车票'}</h1><p class="game-instruction">${q.solved?'想再听一遍？点喇叭，小火车会等你。':q.target.tone?'字母一样，声音的高低不一样哦。':'先点小喇叭，再点一张拼音车票。'}</p>
       <button class="listen-button" data-action="listen" aria-label="听拼音，再听一次"><span class="speaker-disc">${icon('sound')}</span><span><strong>点我听拼音</strong><small>可以一遍一遍听哦</small></span></button>
       <p id="audio-warning" class="audio-warning" role="status" ${audioError?'':'hidden'}>${audioError}</p>
       ${hints}<div class="answer-grid ${q.target.tone?'four':''}" role="group" aria-label="拼音车票">${q.options.map(item => {const wrong=q.mistakes.includes(item.id), correct=q.solved&&item.id===q.target.id;return `<button class="answer pinyin ${wrong?'wrong':''} ${correct?'correct':''} ${q.hinted&&item.id===q.target.id?'hinted':''}" data-action="answer" data-id="${item.id}" aria-label="车票 ${item.text}" ${q.solved||wrong?'disabled':''}><span lang="zh-Latn">${item.text}</span>${correct?'<span class="answer-mark">✓</span>':''}</button>`;}).join('')}</div>
       <p class="feedback ${q.solved?'success':q.mistakes.length?'warning':''}" role="status" aria-live="polite">${feedback}</p>
-      <div class="game-footer">${q.solved ? `<button class="primary" data-action="next">${round.index===4?'乘客到齐，出发领奖！':'接下一位小乘客'}${icon('arrow')}</button>` : `<button class="text-button" data-action="hint">${icon('bulb')} 给我一点提示</button><button class="text-button" data-action="howto">${icon('sound')} 怎么玩</button>`}</div></section></main>`;
+      ${q.solved?`<p class="advance-note" role="status">${advancing?(round.index===4?'乘客到齐啦，马上带你去领奖！':'小乘客上车啦，马上自动接下一位。'):'小火车停好了，慢慢听、慢慢跟读。'}</p>`:''}
+      <div class="game-footer">${q.solved ? `${advancing?'<button class="text-button" data-action="pause-next">等一等，我想跟读</button>':''}<button class="${advancing?'secondary':'primary'}" data-action="next">${round.index===4?(advancing?'立即领取贴纸':'乘客到齐，出发领奖！'):(advancing?'立即接下一位':'接下一位小乘客')}${icon('arrow')}</button>` : `<button class="text-button" data-action="hint">${icon('bulb')} 给我一点提示</button><button class="text-button" data-action="howto">${icon('sound')} 怎么玩</button>`}</div></section></main>`;
   }
   function stickersPage() {
     const backToMap='<button class="text-button sticker-back" data-action="nav" data-view="map">← 返回冒险地图</button>';
@@ -141,7 +188,7 @@
     if (el) {el.innerHTML=icon(progress.sound?'sound':'mute');el.setAttribute('aria-label',`${progress.sound?'关闭':'开启'}声音`);el.setAttribute('aria-pressed',String(progress.sound));}
   }
   function go(next) {
-    stopAudio(); audioError = ''; view = next; render(); window.scrollTo({top:0,behavior:'instant'});
+    cancelAutoAdvance(); stopAudio(); audioError = ''; view = next; render(); window.scrollTo({top:0,behavior:'instant'});
   }
   function start(id = selected) {
     if (!station(id)) return;
@@ -150,6 +197,7 @@
     if(progress.sound) void playItem(currentQuestion().target,currentQuestion());
   }
   function openModal(html, className = '') {
+    pauseAutoAdvance();
     stopAudio();lastFocus=document.activeElement;
     modal.className=className;modal.innerHTML=html;modal.showModal();
   }
@@ -171,25 +219,25 @@
     if(action==='nav') return navigate(el.dataset.view);
     if(action==='select') {selected=id;render();return;}
     if(action==='start') return start();
-    if(action==='listen') return void playItem(currentQuestion().target,currentQuestion());
+    if(action==='listen') {pauseAutoAdvance(); return void playItem(currentQuestion().target,currentQuestion());}
+    if(action==='pause-next') {pauseAutoAdvance(); stopAudio(); return;}
     if(action==='answer') {
       const q=currentQuestion();
       if(!q.heard&&!q.hinted) {toast('先点喇叭听一听，再来选车票吧。');return;}
       const result=C.answer(round,id,progress);
       if(!result.accepted)return;
-      save();render();voice(result.correct?'correct':'retry');return;
+      save();
+      const onComplete = result.correct ? scheduleAutoAdvance() : null;
+      render(); voice(result.correct?'correct-short':'retry',onComplete); return;
     }
     if(action==='next') {
-      if(!currentQuestion()?.solved)return;
-      if(round.index===4){reward=C.finish(round,progress,D.stickers);if(reward){save();go('reward');voice('arrived');}}
-      else {round.index++;go('game');if(progress.sound)void playItem(currentQuestion().target,currentQuestion());}
-      return;
+      return advanceQuestion();
     }
     if(action==='hint') {const q=currentQuestion();q.hinted=true;render();voice('hint');return;}
-    if(action==='howto') return voice('howto');
+    if(action==='howto') {pauseAutoAdvance(); return voice('howto-auto');}
     if(action==='leave') return navigate('map');
     if(action==='leave-confirm') {closeModal();round=null;go(el.dataset.view);return;}
-    if(action==='sound') {progress.sound=!progress.sound;save();if(!progress.sound)stopAudio();updateSoundButton();toast(progress.sound?'声音开启啦':'声音已关闭，点喇叭可重新开启');return;}
+    if(action==='sound') {pauseAutoAdvance();progress.sound=!progress.sound;save();if(!progress.sound)stopAudio();updateSoundButton();toast(progress.sound?'声音开启啦':'声音已关闭，点喇叭可重新开启');return;}
     if(action==='book-tab') {book=id;stopAudio();audioError='';render();return;}
     if(action==='learn') return void playItem(station(book).items.find(i=>i.id===id));
     if(action==='review') return void playItem(round.questions.find(q=>q.target.id===id).target);
@@ -206,8 +254,8 @@
   });
   modal.addEventListener('click',event=>{if(event.target===modal){const r=modal.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)closeModal();}});
   modal.addEventListener('close',()=>{stopAudio();lastFocus?.focus();});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAudio();});
-  window.addEventListener('pagehide',()=>stopAudio());
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){pauseAutoAdvance();stopAudio();}});
+  window.addEventListener('pagehide',()=>{pauseAutoAdvance();stopAudio();});
   window.addEventListener('beforeunload',event=>{if(view==='game'&&round?.questions.some(q=>q.solved)&&!round.finished){event.preventDefault();event.returnValue='';}});
   icons.restaurant='<path d="M4 3v7a3 3 0 0 0 6 0V3M7 3v18M16 3v8h4V3M20 11v10"/>';
   restaurant=window.RestaurantGame.create({onChange:render,player:document.querySelector('#restaurant-audio')});
