@@ -17,18 +17,26 @@
   ].map(([id,word,emoji,pinyin,initial,final,audio,finalAudio,nearInitial,nearFinal])=>({
     id,word,emoji,pinyin,parts:[initial,final],audio,partAudio:[initial,finalAudio],cards:[initial,final,nearInitial,nearFinal]
   }));
-  const slots=[{id:'hat',name:'厨师帽'},{id:'table',name:'餐桌'},{id:'chair',name:'椅子'},{id:'room',name:'小摆设'}];
+  const slots=[{id:'hat',name:'厨师帽'},{id:'apron',name:'围裙'},{id:'table',name:'餐桌'},{id:'chair',name:'椅子'},{id:'room',name:'小摆设'},{id:'wall',name:'墙纸'},{id:'view',name:'窗外风景'}];
   // Keep released decoration IDs stable. These never use the train's sticker IDs or storage.
-  const decorations=[
-    ['hat-white','hat','小白厨师帽','👨‍🍳',0,0],['table-wood','table','温暖木桌','🪵',0,0],
-    ['chair-wood','chair','小木椅','🪑',0,0],['room-window','room','晴天窗台','☀️',0,0],
-    ['room-sprout','room','窗边小绿植','🪴',3,3],['hat-bunny','hat','兔耳厨师帽','🐰',6,4],
-    ['table-flower','table','花朵餐桌','🌼',9,6],['chair-panda','chair','熊猫椅子','🐼',12,8],
-    ['room-lamp','room','星星小夜灯','🌟',18,10],['hat-crown','hat','小小主厨冠','👑',24,12],
-    ['table-ocean','table','海洋餐桌','🐚',30,12],['chair-bunny','chair','兔兔椅子','🐰',36,12],
-    ['room-rainbow','room','彩虹挂画','🌈',42,12],['hat-bear','hat','小熊厨师帽','🐻',48,12],
-    ['table-picnic','table','野餐格子桌','🧺',54,12],['chair-cat','chair','猫咪椅子','🐱',60,12]
-  ].map(([id,slot,name,emoji,guests,foods])=>({id,slot,name,emoji,guests,foods}));
+  const starters=[
+    ['hat-white','hat','小白厨师帽'],['apron-white','apron','白白小围裙'],['table-wood','table','温暖木桌'],['chair-wood','chair','小木椅'],
+    ['room-window','room','今日小黑板'],['wall-cream','wall','奶油色墙纸'],['view-day','view','晴天森林']
+  ];
+  // Every finished visit (3 guests) unlocks exactly one gift, in this order.
+  // The first twelve keep their original order so older saves continue naturally.
+  const gifts=[
+    ['room-sprout','room','窗边小绿植'],['hat-bunny','hat','兔耳厨师帽'],['table-flower','table','花朵餐桌'],['chair-panda','chair','熊猫椅子'],
+    ['room-lamp','room','星星小夜灯'],['hat-crown','hat','小小主厨冠'],['table-ocean','table','海洋餐桌'],['chair-bunny','chair','兔兔椅子'],
+    ['room-rainbow','room','彩虹挂画'],['hat-bear','hat','小熊厨师帽'],['table-picnic','table','野餐格子桌'],['chair-cat','chair','猫咪椅子'],
+    ['wall-mint','wall','薄荷条纹墙'],['view-sunset','view','晚霞满天'],['apron-check','apron','红格子围裙'],['hat-strawberry','hat','草莓帽'],
+    ['room-fishbowl','room','小鱼缸'],['table-candy','table','甜甜蛋糕桌'],['chair-mushroom','chair','蘑菇小凳'],['wall-heart','wall','粉色爱心墙'],
+    ['view-night','view','星星和月亮'],['apron-dots','apron','蓝色波点围裙'],['hat-flower','hat','小花环'],['room-clock','room','咕咕钟'],
+    ['table-star','table','星空烛光桌'],['chair-sofa','chair','草莓小沙发'],['wall-star','wall','星星墙纸'],['view-snow','view','下雪啦'],
+    ['apron-rainbow','apron','彩虹围裙'],['hat-party','hat','派对尖尖帽'],['room-balloon','room','彩色气球'],['wall-leaf','wall','森林叶子墙'],
+    ['view-sea','view','大海和小船']
+  ];
+  const decorations=[...starters.map(d=>[...d,false]),...gifts.map(d=>[...d,true])].map(([id,slot,name,gift])=>({id,slot,name,gift}));
   const guests=[{name:'小兔',emoji:'🐰'},{name:'小熊',emoji:'🐻'},{name:'小狐狸',emoji:'🦊'},{name:'熊猫',emoji:'🐼'},{name:'小猫',emoji:'🐱'},{name:'小鹿',emoji:'🦌'}];
   const data={recipes,decorations,slots,guests};
   root.RestaurantData=data;

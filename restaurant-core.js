@@ -4,15 +4,23 @@
   const STORAGE_KEY='pinyin-animal-restaurant-v1';
   const recipe=id=>D.recipes.find(r=>r.id===id);
   const count=n=>Number.isSafeInteger(n)&&n>=0?n:0;
-  const defaults=()=>({version:1,served:0,shifts:0,dishes:{},unlocked:[],equipped:Object.fromEntries(D.decorations.filter(d=>!d.guests).map(d=>[d.slot,d.id])),sound:true,session:null});
+  const defaults=()=>({version:1,served:0,shifts:0,dishes:{},unlocked:[],equipped:Object.fromEntries(D.decorations.filter(d=>!d.gift).map(d=>[d.slot,d.id])),sound:true,session:null});
   const foods=p=>Object.keys(p.dishes).filter(id=>recipe(id)&&p.dishes[id]>0).length;
-  const available=(p,d)=>!d.guests||p.unlocked.includes(d.id);
+  const available=(p,d)=>!d.gift||p.unlocked.includes(d.id);
+  const locked=p=>D.decorations.filter(d=>d.gift&&!p.unlocked.includes(d.id));
+  const nextGift=p=>locked(p)[0]||null;
+  // Guests still to serve before this gift arrives; each finished visit of 3 guests brings the next one.
+  function guestsUntil(p,d){
+    const rank=locked(p).indexOf(d),s=p.session;
+    if(rank<0)return 0;
+    return (rank+1)*3-(s&&s.phase!=='done'?s.index+(s.phase==='served'?1:0):0);
+  }
   function restore(raw){
     const p=defaults();
     if(!raw||raw.version!==1)return p;
     p.served=count(raw.served);p.shifts=count(raw.shifts);p.sound=raw.sound!==false;
     for(const r of D.recipes)if(count(raw.dishes?.[r.id]))p.dishes[r.id]=count(raw.dishes[r.id]);
-    p.unlocked=D.decorations.filter(d=>d.guests&&Array.isArray(raw.unlocked)&&raw.unlocked.includes(d.id)).map(d=>d.id);
+    p.unlocked=D.decorations.filter(d=>d.gift&&Array.isArray(raw.unlocked)&&raw.unlocked.includes(d.id)).map(d=>d.id);
     for(const slot of D.slots){const d=D.decorations.find(d=>d.slot===slot.id&&d.id===raw.equipped?.[slot.id]);if(d&&available(p,d))p.equipped[slot.id]=d.id;}
     const s=raw.session;
     if(s&&Array.isArray(s.orders)&&s.orders.length===3&&new Set(s.orders.map(o=>o?.recipeId)).size===3&&s.orders.every(o=>{
@@ -59,13 +67,13 @@
   function serve(p){
     const s=p.session;if(!s||s.phase!=='cooked')return null;
     const id=s.orders[s.index].recipeId;p.served++;p.dishes[id]=(p.dishes[id]||0)+1;
-    const unlocked=D.decorations.filter(d=>d.guests&&!p.unlocked.includes(d.id)&&p.served>=d.guests&&foods(p)>=d.foods);
-    p.unlocked.push(...unlocked.map(d=>d.id));s.rewards.push(...unlocked.map(d=>d.id));
+    const gift=s.index===2?nextGift(p):null;
+    if(gift){p.unlocked.push(gift.id);s.rewards.push(gift.id);}
     s.phase=s.index===2?'done':'served';if(s.phase==='done')p.shifts++;
-    return {unlocked,done:s.phase==='done'};
+    return {unlocked:gift?[gift]:[],done:s.phase==='done'};
   }
   function next(p){const s=p.session;if(!s||s.phase!=='served')return false;s.index++;s.phase='building';s.picked=[null,null];s.hinted=false;s.checked=false;return true;}
   function equip(p,id){const d=D.decorations.find(d=>d.id===id);if(!d||!available(p,d))return false;p.equipped[d.slot]=d.id;return true;}
-  const api={STORAGE_KEY,defaults,restore,foods,available,recipe,start,place,pick,clear,hint,cook,serve,next,equip};
+  const api={STORAGE_KEY,defaults,restore,foods,available,nextGift,guestsUntil,recipe,start,place,pick,clear,hint,cook,serve,next,equip};
   root.RestaurantCore=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof globalThis!=='undefined'?globalThis:window);
