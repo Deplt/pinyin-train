@@ -78,8 +78,7 @@
     function toggleSound(){p.sound=!p.sound;save();stopAudio();onChange();}
     function scene(compact=false){
       const equipped=D.slots.map(s=>D.decorations.find(d=>d.id===p.equipped[s.id]));
-      return `<div class="cafe-scene ${compact?'compact':''}" role="img" aria-label="我的餐厅：${equipped.map(d=>d.name).join('、')}">${A.scene(p.equipped)}
-        <div class="cafe-scene-caption" aria-hidden="true">我的小餐厅 · 每件装饰都由你来选</div></div>`;
+      return `<div class="cafe-scene ${compact?'compact':''}" role="img" aria-label="我的餐厅：${equipped.map(d=>d.name).join('、')}">${A.scene(p.equipped)}</div>`;
     }
     function warning(){return storageAvailable?'':'<p class="audio-warning" role="status">这个浏览器暂时不能保存餐厅记录；关闭后可能丢失，请使用可保存数据的普通浏览模式。</p>';}
     const gifts=D.decorations.filter(d=>d.gift);
@@ -91,7 +90,7 @@
     function room(){
       const active=p.session&&p.session.phase!=='done';
       return `<div class="cafe-heading"><div><div class="eyebrow">围上小围裙，一起开张吧</div><h1>欢迎来到动物小餐厅</h1><p>听点餐，拼一拼，把好吃的端给朋友。</p></div><span class="cafe-label">🍽️ 每次 3 位小客人</span></div>
-        <div class="cafe-home-layout">${scene()}<section class="cafe-welcome"><span class="cafe-welcome-icon" aria-hidden="true">🧑‍🍳</span><h2>今天，你是小厨师！</h2><div class="cafe-steps"><span>① 听点餐</span><span>② 拼食物</span><span>③ 端上桌</span></div><button class="primary cafe-primary" data-action="cafe-start">${active?'继续接待客人':'穿好围裙，开张！'} →</button><button class="text-button" data-action="cafe-howto">🔊 听听怎么玩</button><p class="cafe-saving">${active?'上次做到的地方已保存，接着玩就好。':'慢慢拼，没有倒计时，提示也不扣奖励。'}</p></section></div>
+        <div class="cafe-home-layout">${scene()}<section class="cafe-welcome"><span class="cafe-open-label">今日营业</span><h2>今天，你是小厨师！</h2><div class="cafe-steps"><span>① 听点餐</span><span>② 拼食物</span><span>③ 端上桌</span></div><button class="primary cafe-primary" data-action="cafe-start">${active?'继续接待客人':'穿好围裙，开张！'} →</button><button class="text-button" data-action="cafe-howto">🔊 听听怎么玩</button><p class="cafe-saving">${active?'上次做到的地方已保存，接着玩就好。':'慢慢拼，没有倒计时，提示也不扣奖励。'}</p></section></div>
         <div class="cafe-stats"><div><strong>♥ ${p.served}</strong><span>接待的客人</span></div><div><strong>🍲 ${C.foods(p)} / ${D.recipes.length}</strong><span>尝试的食物</span></div><div><strong>🎁 ${p.unlocked.length} / ${gifts.length}</strong><span>解锁的装饰</span></div></div>
         ${progressCard()}<div class="section-heading"><h2>今天也有好吃的</h2><span>点食物，听听完整拼音</span></div><div class="cafe-menu">${D.recipes.map(r=>`<button class="cafe-menu-card ${p.dishes[r.id]?'visited':''}" data-action="cafe-preview" data-id="${r.id}" aria-label="听 ${r.pinyin}，${r.word}"><span aria-hidden="true">${r.emoji}</span><strong class="pinyin">${r.pinyin}</strong><small>${r.word}${p.dishes[r.id]?' · 做过啦':''}</small></button>`).join('')}</div>
         <p class="cafe-parent-note">💛 餐厅装饰和小火车贴纸分别收集；这里的进度不会改动小火车的星星、贴纸和练习记录。</p>`;
@@ -113,7 +112,7 @@
     function receipt(){
       const s=p.session,gifts=s.rewards.map(id=>D.decorations.find(d=>d.id===id));
       return `<section class="cafe-receipt"><div class="cafe-receipt-top">本次营业的小收获</div><span class="cafe-receipt-emoji" aria-hidden="true">🧑‍🍳</span><div class="eyebrow">三位客人，都吃饱啦</div><h1>谢谢你，小小厨师！</h1><p>今天接待 3 位朋友，练习了这些食物：</p><div class="cafe-receipt-foods">${s.orders.map(o=>{const r=C.recipe(o.recipeId);return `<button data-action="cafe-preview" data-id="${r.id}"><span>${r.emoji}</span><strong class="pinyin">${r.pinyin}</strong><small>${r.word} · 🔊</small></button>`;}).join('')}</div>
-        ${gifts.length?gifts.map(d=>`<div class="cafe-gift"><span class="cafe-gift-art" aria-hidden="true">${thumb(d)}</span><div><h2>🎁 解锁新装饰啦！</h2><p>${d.name}</p>${p.equipped[d.slot]===d.id?'<p class="cafe-gift-worn">✓ 已经用上啦</p>':`<button class="secondary cafe-wear" data-action="cafe-wear" data-id="${d.id}">马上用上它</button>`}</div></div>`).join(''):`<p class="cafe-no-gift">${C.nextGift(p)?'练习和收获都保存啦，下一轮还有新礼物等你！':'装饰册都集齐啦，餐厅真漂亮！'}</p>`}
+        ${gifts.length?gifts.map(d=>`<div class="cafe-gift"><span class="cafe-gift-art" aria-hidden="true">${thumb(d)}</span><div><h2>🎁 解锁新装饰啦！</h2><p>${d.name}</p>${p.equipped[d.slot]===d.id?'<p class="cafe-gift-worn">✓ 已经用上啦</p>':`<button class="secondary cafe-wear" data-action="cafe-wear" data-id="${d.id}">马上用上它</button>`}</div></div>`).join(''):'<p class="cafe-no-gift">装饰册都集齐啦，餐厅真漂亮！</p>'}
         <div class="complete-actions"><button class="primary cafe-primary" data-action="cafe-decor">去布置我的餐厅 →</button><button class="secondary" data-action="cafe-room">回到餐厅</button></div><p class="rest-note">忙完一小轮，看看远处，休息一下吧 🌿</p></section>${progressCard()}`;
     }
     function decor(){

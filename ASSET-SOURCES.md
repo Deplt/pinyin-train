@@ -2,7 +2,7 @@
 
 - `assets/posters/*.png`：家长提供的五张学习图，原样复制。对应声母、单韵母和复韵母、鼻韵母和特殊韵母、整体认读、声调。
 - `assets/train-forest.png`：本项目使用内置 image_gen 生成的原创森林小火车插画。提示词见项目的 `ARTWORK.md`。
-- `restaurant-art.js`：本项目用 SVG 图形绘制的餐厅、小熊厨师及 7 类装饰；场景和装饰缩略图共用同一套图形，无需额外下载图片。
+- `restaurant-art.js` 与 `assets/restaurant/art/*-gouache.webp`：餐厅采用可独立换装的 SVG 图层，搭配内置 image_gen 生成的小熊、森林、木桌、木椅、绿植五张绘本插画。插画转为本地 WebP，四张物件保留透明背景；场景与缩略图共用素材，无外部图片服务依赖。生成提示词与路径见项目 `ARTWORK.md`。
 - `assets/audio/*.mp3`：来自 [cmguo/PinYinSound](https://github.com/cmguo/PinYinSound)，下载日期 2026-09-14。按源文件名保留，`v`、`ve`、`vn` 分别对应 `ü`、`üe`、`ün`。这是拼音发音素材，不是将拉丁字母交给普通文字朗读引擎。该仓库未声明素材的再分发许可证，不能把它当作已获开源授权的音频库；本次用于个人家庭试玩，公开分发或商用前应取得许可或替换成有明确授权的录音。
 - `assets/voice/*.mp3`：游戏引导、鼓励语音，用 `scripts/make-voice.py` 通过 [edge-tts](https://github.com/rany2/edge-tts) 调用微软 Edge 神经网络语音 `zh-CN-XiaoxiaoNeural` 生成，生成日期 2026-09-16。不用于模拟拼音音素。edge-tts 是 Edge 浏览器"朗读"服务的非官方接口，本次用于个人家庭试玩；公开分发前建议改用 Azure Speech 官方服务生成同名音色，并遵守其使用条款。
 - `assets/restaurant/voice/*.mp3`：动物餐厅的玩法和反馈语音使用同上的 `zh-CN-XiaoxiaoNeural`，12 句客人点餐使用童声 `zh-CN-YunxiaNeural`，同一脚本生成，授权边界同上。
