@@ -4,7 +4,7 @@
   const STORAGE_KEY='pinyin-animal-restaurant-v1';
   const recipe=id=>D.recipes.find(r=>r.id===id);
   const count=n=>Number.isSafeInteger(n)&&n>=0?n:0;
-  const defaults=()=>({version:1,served:0,shifts:0,dishes:{},unlocked:[],equipped:Object.fromEntries(D.decorations.filter(d=>!d.gift).map(d=>[d.slot,d.id])),sound:true,session:null});
+  const defaults=()=>({version:1,served:0,shifts:0,dishes:{},unlocked:[],equipped:Object.fromEntries(D.decorations.filter(d=>!d.gift).map(d=>[d.slot,d.id])),placements:Object.fromEntries(D.positions.map(s=>[s.id,s.starter||null])),sound:true,session:null});
   const foods=p=>Object.keys(p.dishes).filter(id=>recipe(id)&&p.dishes[id]>0).length;
   const available=(p,d)=>!d.gift||p.unlocked.includes(d.id);
   const locked=p=>D.decorations.filter(d=>d.gift&&!p.unlocked.includes(d.id));
@@ -22,6 +22,17 @@
     for(const r of D.recipes)if(count(raw.dishes?.[r.id]))p.dishes[r.id]=count(raw.dishes[r.id]);
     p.unlocked=D.decorations.filter(d=>d.gift&&Array.isArray(raw.unlocked)&&raw.unlocked.includes(d.id)).map(d=>d.id);
     for(const slot of D.slots){const d=D.decorations.find(d=>d.slot===slot.id&&d.id===raw.equipped?.[slot.id]);if(d&&available(p,d))p.equipped[slot.id]=d.id;}
+    if(raw.placements&&typeof raw.placements==='object'){
+      for(const pos of D.positions){
+        const id=raw.placements[pos.id],d=D.decorations.find(d=>d.id===id&&d.position===pos.id);
+        if(id===null)p.placements[pos.id]=null;
+        else if(d&&available(p,d))p.placements[pos.id]=d.id;
+      }
+    }else{
+      // Released v1 saves have a single room slot. Keep that piece in its proper place.
+      const d=D.decorations.find(d=>d.id===p.equipped.room);
+      if(d?.position)p.placements[d.position]=d.id;
+    }
     const s=raw.session;
     if(s&&Array.isArray(s.orders)&&s.orders.length===3&&new Set(s.orders.map(o=>o?.recipeId)).size===3&&s.orders.every(o=>{
       const r=recipe(o?.recipeId);return r&&Array.isArray(o.cards)&&o.cards.length===4&&new Set(o.cards).size===4&&o.cards.every(c=>r.cards.includes(c));
@@ -73,7 +84,18 @@
     return {unlocked:gift?[gift]:[],done:s.phase==='done'};
   }
   function next(p){const s=p.session;if(!s||s.phase!=='served')return false;s.index++;s.phase='building';s.picked=[null,null];s.hinted=false;s.checked=false;return true;}
-  function equip(p,id){const d=D.decorations.find(d=>d.id===id);if(!d||!available(p,d))return false;p.equipped[d.slot]=d.id;return true;}
-  const api={STORAGE_KEY,defaults,restore,foods,available,nextGift,guestsUntil,recipe,start,place,pick,clear,hint,cook,serve,next,equip};
+  function equip(p,id){const d=D.decorations.find(d=>d.id===id);if(!d||!available(p,d))return false;p.equipped[d.slot]=d.id;if(d.position)p.placements[d.position]=d.id;return true;}
+  function removeProp(p,position){if(!D.positions.some(s=>s.id===position)||!p.placements[position])return false;p.placements[position]=null;return true;}
+  function themeLayout(p,id){
+    const theme=D.themes.find(t=>t.id===id);if(!theme)return null;
+    const own=ids=>ids.find(id=>{const d=D.decorations.find(d=>d.id===id);return d&&available(p,d);})||null;
+    const equipped={...p.equipped},placements={};
+    for(const [slot,ids] of Object.entries(theme.pieces)){const id=own(ids);if(id)equipped[slot]=id;}
+    for(const pos of D.positions)placements[pos.id]=own(theme.props[pos.id]||[]);
+    equipped.room=Object.values(placements).find(Boolean)||'room-window';
+    return {equipped,placements};
+  }
+  function equipTheme(p,id){const layout=themeLayout(p,id);if(!layout)return false;p.equipped=layout.equipped;p.placements=layout.placements;return true;}
+  const api={STORAGE_KEY,defaults,restore,foods,available,nextGift,guestsUntil,recipe,start,place,pick,clear,hint,cook,serve,next,equip,removeProp,themeLayout,equipTheme};
   root.RestaurantCore=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof globalThis!=='undefined'?globalThis:window);

@@ -6,7 +6,7 @@
     let saved,storageAvailable=true;
     try{storage=storage||root.localStorage;const raw=storage.getItem(C.STORAGE_KEY);try{saved=JSON.parse(raw);}catch{saved=null;}}catch{storageAvailable=false;}
     const p=C.restore(saved);
-    let screen='room',decorSlot='all',audioToken=0,audioError='',playing=false;
+    let screen='room',decorSlot='table',decorMode='pieces',decorMessage='',layoutUndo=null,changedPiece='',audioToken=0,audioError='',playing=false;
     let drag=null,suppressClickUntil=0;
     const save=()=>{try{storage.setItem(C.STORAGE_KEY,JSON.stringify(p));}catch{storageAvailable=false;}};
     const current=()=>C.recipe(p.session?.orders[p.session.index].recipeId);
@@ -76,9 +76,41 @@
       next();
     }
     function toggleSound(){p.sound=!p.sound;save();stopAudio();onChange();}
-    function scene(compact=false){
-      const equipped=D.slots.map(s=>D.decorations.find(d=>d.id===p.equipped[s.id]));
-      return `<div class="cafe-scene ${compact?'compact':''}" role="img" aria-label="我的餐厅：${equipped.map(d=>d.name).join('、')}">${A.scene(p.equipped)}</div>`;
+    function scene(compact=false,interactive=false){
+      const equipped=[...D.slots.filter(s=>s.id!=='room').map(s=>D.decorations.find(d=>d.id===p.equipped[s.id])),...Object.values(p.placements).filter(Boolean).map(id=>D.decorations.find(d=>d.id===id))];
+      const areas=[['hat','帽子',25,8,20,30],['apron','围裙',28,57,14,30],['table','餐桌',49,57,34,36],['chair','椅子',85,50,13,43],['floor','窗边摆设',3,56,20,38],['wallart','墙面摆设',86,14,13,28],['wall','墙纸',54,20,30,22],['view','窗外风景',3,17,24,39]];
+      if(decorSlot==='shelf')areas.push(['shelf','窗台摆设',12,42,16,20]);
+      if(decorSlot==='party')areas.push(['party','角落摆设',85,18,14,68]);
+      return `<div class="cafe-scene ${compact?'compact':''} ${interactive?'cafe-scene-editable':''}" role="${interactive?'group':'img'}" aria-label="我的餐厅：${equipped.map(d=>d.name).join('、')}">${A.scene(p.equipped,p.placements,changedPiece)}${interactive?`<div class="cafe-hotspots">${areas.map(([id,name,x,y,w,h])=>`<button class="cafe-hotspot ${decorSlot===id&&decorMode==='pieces'?'active':''}" data-action="cafe-category" data-id="${id}" aria-label="更换${name}" style="left:${x}%;top:${y}%;width:${w}%;height:${h}%"><span>${decorSlot===id?'✎':'＋'} ${name}</span></button>`).join('')}</div>`:''}</div>`;
+    }
+    const categories=[...D.slots.filter(s=>!['room','wall','view'].includes(s.id)),...D.positions,...D.slots.filter(s=>['wall','view'].includes(s.id))];
+    const worn=d=>d.position?p.placements[d.position]===d.id:p.equipped[d.slot]===d.id;
+    const layout=()=>({equipped:{...p.equipped},placements:{...p.placements}});
+    function refreshEditor(focus,resetChoices=false){
+      const list=document.querySelector('.cafe-choices'),tabs=document.querySelector('.cafe-categories');
+      const top=resetChoices?0:list?.scrollTop||0,left=tabs?.scrollLeft||0;
+      onChange();
+      const nextList=document.querySelector('.cafe-choices'),nextTabs=document.querySelector('.cafe-categories');
+      if(nextList)nextList.scrollTop=top;if(nextTabs)nextTabs.scrollLeft=left;
+      if(focus){
+        const target=document.querySelector(`${focus.action==='cafe-category'?'.cafe-categories ':''}[data-action="${focus.action}"][data-id="${focus.id||''}"]`);
+        target?.focus({preventScroll:true});
+        if(nextTabs&&focus.action==='cafe-category'&&target){
+          const item=target.getBoundingClientRect(),strip=nextTabs.getBoundingClientRect();
+          if(item.left<strip.left)nextTabs.scrollLeft+=item.left-strip.left;
+          else if(item.right>strip.right)nextTabs.scrollLeft+=item.right-strip.right;
+        }
+      }
+    }
+    function changeLayout(change,message,piece=''){
+      const before=layout();if(!change())return;
+      if(JSON.stringify(before)!==JSON.stringify(layout())){layoutUndo=before;save();}
+      decorMessage=message;changedPiece=piece;
+    }
+    function openDecor(d){
+      const gift=d||D.decorations.find(d=>d.id===p.session?.rewards.at(-1));
+      stopAudio();screen='decor';decorMode='pieces';decorSlot=gift?(gift.position||gift.slot):decorSlot;
+      onChange();root.scrollTo({top:0,behavior:'instant'});
     }
     function warning(){return storageAvailable?'':'<p class="audio-warning" role="status">这个浏览器暂时不能保存餐厅记录；关闭后可能丢失，请使用可保存数据的普通浏览模式。</p>';}
     const gifts=D.decorations.filter(d=>d.gift);
@@ -112,27 +144,46 @@
     function receipt(){
       const s=p.session,gifts=s.rewards.map(id=>D.decorations.find(d=>d.id===id));
       return `<section class="cafe-receipt"><div class="cafe-receipt-top">本次营业的小收获</div><span class="cafe-receipt-emoji" aria-hidden="true">🧑‍🍳</span><div class="eyebrow">三位客人，都吃饱啦</div><h1>谢谢你，小小厨师！</h1><p>今天接待 3 位朋友，练习了这些食物：</p><div class="cafe-receipt-foods">${s.orders.map(o=>{const r=C.recipe(o.recipeId);return `<button data-action="cafe-preview" data-id="${r.id}"><span>${r.emoji}</span><strong class="pinyin">${r.pinyin}</strong><small>${r.word} · 🔊</small></button>`;}).join('')}</div>
-        ${gifts.length?gifts.map(d=>`<div class="cafe-gift"><span class="cafe-gift-art" aria-hidden="true">${thumb(d)}</span><div><h2>🎁 解锁新装饰啦！</h2><p>${d.name}</p>${p.equipped[d.slot]===d.id?'<p class="cafe-gift-worn">✓ 已经用上啦</p>':`<button class="secondary cafe-wear" data-action="cafe-wear" data-id="${d.id}">马上用上它</button>`}</div></div>`).join(''):'<p class="cafe-no-gift">装饰册都集齐啦，餐厅真漂亮！</p>'}
+        ${gifts.length?gifts.map(d=>`<div class="cafe-gift"><span class="cafe-gift-art" aria-hidden="true">${thumb(d)}</span><div><h2>🎁 解锁新装饰啦！</h2><p>${d.name}</p>${worn(d)?'<p class="cafe-gift-worn">✓ 已经用上啦</p>':`<button class="secondary cafe-wear" data-action="cafe-wear" data-id="${d.id}">马上用上它</button>`}</div></div>`).join(''):'<p class="cafe-no-gift">装饰册都集齐啦，餐厅真漂亮！</p>'}
         <div class="complete-actions"><button class="primary cafe-primary" data-action="cafe-decor">去布置我的餐厅 →</button><button class="secondary" data-action="cafe-room">回到餐厅</button></div><p class="rest-note">忙完一小轮，看看远处，休息一下吧 🌿</p></section>${progressCard()}`;
     }
     function decor(){
       const fresh=p.session?.rewards||[];
-      const shown=decorSlot==='all'?D.slots.flatMap(s=>D.decorations.filter(d=>d.slot===s.id)):D.decorations.filter(d=>d.slot===decorSlot);
-      return `<div class="cafe-heading"><div><div class="eyebrow">我的小餐厅，我来布置</div><h1>把喜欢的装饰摆上去</h1><p>已经得到的装饰可以反复更换，不用花星星。已收集 ${p.unlocked.length} / ${gifts.length} 件礼物。</p></div><button class="text-button" data-action="cafe-room">← 回到餐厅</button></div>${scene(true)}
-        <div class="cafe-decor-tabs" role="group" aria-label="装饰分类">${[{id:'all',name:'全部装饰'},...D.slots].map(s=>`<button data-action="cafe-filter" data-id="${s.id}" aria-pressed="${decorSlot===s.id}">${s.name}</button>`).join('')}</div><div class="cafe-decor-grid">${shown.map(d=>{
-          const unlocked=C.available(p,d),equipped=p.equipped[d.slot]===d.id;
-          return `<article class="cafe-decoration ${unlocked?'':'locked'} ${equipped?'equipped':''}">${fresh.includes(d.id)?'<span class="cafe-new">新!</span>':''}<span class="cafe-decoration-icon" aria-hidden="true">${thumb(d)}</span><h2>${d.name}</h2><p>${unlocked?(d.gift?'努力得到的小礼物':'开店就有的小装备'):`再接待 ${C.guestsUntil(p,d)} 位客人<br>就能得到它`}</p><button class="secondary" data-action="cafe-equip" data-id="${d.id}" ${!unlocked||equipped?'disabled':''}>${equipped?'✓ 正在用':unlocked?'用这个':'🔒 还在等你'}</button></article>`;
-        }).join('')}</div><p class="cafe-parent-note">每完成一轮（接待 3 位客人）就按顺序送 1 件新装饰。餐厅奖励独立保存，小火车的 48 张贴纸仍由小火车旅程获得。</p>`;
+      const category=categories.find(s=>s.id===decorSlot),pos=D.positions.find(s=>s.id===decorSlot);
+      const matching=D.decorations.filter(d=>d.position?d.position===decorSlot:d.slot===decorSlot);
+      const owned=matching.filter(d=>C.available(p,d)).sort((a,b)=>Number(fresh.includes(b.id))-Number(fresh.includes(a.id)));
+      const shown=decorMode==='collection'?[...D.decorations].sort((a,b)=>Number(C.available(p,b))-Number(C.available(p,a))):owned;
+      const card=d=>{const unlocked=C.available(p,d),equipped=worn(d);return `<button class="cafe-choice ${unlocked?'':'locked'} ${equipped?'equipped':''}" data-action="cafe-equip" data-id="${d.id}" aria-label="${unlocked?equipped?'正在用':'用上':'尚未解锁'}${d.name}" aria-pressed="${equipped}" ${!unlocked||equipped?'disabled':''}>${fresh.includes(d.id)?'<span class="cafe-new">新</span>':''}<span class="cafe-choice-art" aria-hidden="true">${thumb(d)}</span><strong>${d.name}</strong><small>${equipped?'✓ 正在用':unlocked?'点一下换上':`🔒 再接待 ${C.guestsUntil(p,d)} 位`}</small></button>`;};
+      const next=C.nextGift(p);
+      const choices=decorMode==='themes'?D.themes.map(t=>{const preview=C.themeLayout(p,t.id);return `<button class="cafe-theme-card" data-action="cafe-theme" data-id="${t.id}" aria-label="搭配${t.name}"><span class="cafe-theme-preview" aria-hidden="true">${A.scene(preview.equipped,preview.placements)}</span><span class="cafe-theme-copy"><strong>${t.icon} ${t.name}</strong><small>${t.description}</small><b>一键搭配 →</b></span></button>`;}).join(''):
+        `${pos&&decorMode==='pieces'?`<button class="cafe-choice cafe-choice-empty ${p.placements[pos.id]?'':'equipped'}" data-action="cafe-remove" data-id="${pos.id}" ${p.placements[pos.id]?'':'disabled'}><span class="cafe-choice-art cafe-empty-art" aria-hidden="true">◌</span><strong>留一点空白</strong><small>${p.placements[pos.id]?'收起这里的摆设':'✓ 这里空着'}</small></button>`:''}${shown.map(card).join('')}${decorMode==='pieces'&&!owned.length?'<div class="cafe-empty-state"><span>🎁</span><strong>这里的小礼物还在路上</strong><p>接待三位朋友，就能收到一件新装饰。</p></div>':''}`;
+      return `<div class="cafe-editor-heading"><div><h1>把喜欢的装饰摆上去</h1><p>我的小餐厅，我来布置</p></div><button class="secondary" data-action="cafe-room">完成 ✓</button></div>
+        <div class="cafe-editor-layout"><section class="cafe-stage" aria-label="餐厅换装预览">${scene(true,true)}<div class="cafe-scene-feedback"><span class="cafe-chef-reaction" aria-hidden="true">${changedPiece?'♥':'✦'}</span><p role="status" aria-live="polite">${esc(decorMessage||'点点帽子、餐桌或窗户，换上你喜欢的装饰。')}</p></div><div class="cafe-stage-note">每一份小礼物，都让小店更像你的家。</div></section>
+        <section class="cafe-drawer" aria-label="选择餐厅装饰"><div class="cafe-drawer-modes" role="group" aria-label="装饰玩法">${[{id:'pieces',name:'🧺 我的装饰'},{id:'themes',name:'✨ 帮我搭配'},{id:'collection',name:'🎁 礼物图鉴'}].map(m=>`<button data-action="cafe-mode" data-id="${m.id}" aria-pressed="${decorMode===m.id}">${m.name}</button>`).join('')}</div>
+        ${decorMode==='pieces'?`<div class="cafe-categories" role="group" aria-label="装饰分类">${categories.map(s=>`<button data-action="cafe-category" data-id="${s.id}" aria-pressed="${decorSlot===s.id}"><span aria-hidden="true">${s.icon}</span>${s.name}</button>`).join('')}</div>`:''}
+        <div class="cafe-drawer-title"><h2>${decorMode==='themes'?'挑一种小店的心情':decorMode==='collection'?`已收集 ${p.unlocked.length} / ${gifts.length} 件礼物`:`${category?.icon||''} ${category?.name||'我的装饰'}`}</h2><span>${decorMode==='themes'?'只搭配已拥有的装饰':decorMode==='collection'?'每轮营业送一件':'点图片就能换上'}</span></div>
+        <div class="cafe-choices ${decorMode==='themes'?'cafe-theme-choices':''}" tabindex="0" aria-label="${decorMode==='themes'?'餐厅主题':'可选装饰'}">${choices}</div>
+        <div class="cafe-drawer-footer"><span>${next?`下一份：${next.name}`:'小礼物都集齐啦！'}</span><button class="text-button" data-action="cafe-undo" ${layoutUndo?'':'disabled'}>↶ 撤销</button></div></section></div>`;
     }
-    function render(){cancelDrag();return `<main class="cafe">${screen==='kitchen'?kitchen():screen==='decor'?decor():room()}<p id="cafe-audio-status" class="cafe-audio-status" role="status">${audioError||'没听清？小喇叭可以反复点。'}</p>${warning()}</main>`;}
+    function render(){cancelDrag();return `<main class="cafe ${screen==='decor'?'cafe-editor-page':''}">${screen==='kitchen'?kitchen():screen==='decor'?decor():room()}${screen==='decor'?'':`<p id="cafe-audio-status" class="cafe-audio-status" role="status">${audioError||'没听清？小喇叭可以反复点。'}</p>`}${warning()}</main>`;}
     function handleAction(el){
       const {action,id,index}=el.dataset;
-      if(action==='cafe-room'){stopAudio();screen='room';onChange();root.scrollTo({top:0,behavior:'instant'});return;}
+      if(action==='cafe-room'){stopAudio();screen='room';changedPiece='';onChange();root.scrollTo({top:0,behavior:'instant'});return;}
       if(action==='cafe-start'){C.start(p);save();screen='kitchen';onChange();root.scrollTo({top:0,behavior:'instant'});if(p.session.phase==='building')play([voice(`order-${current().id}`),phonetic(current().audio)]);return;}
-      if(action==='cafe-decor'){stopAudio();screen='decor';onChange();return;}
-      if(action==='cafe-filter'){if(['all',...D.slots.map(s=>s.id)].includes(id)){decorSlot=id;onChange();}return;}
-      if(action==='cafe-equip'){if(C.equip(p,id)){save();onChange();}return;}
-      if(action==='cafe-wear'){if(C.equip(p,id)){save();stopAudio();screen='decor';onChange();root.scrollTo({top:0,behavior:'instant'});}return;}
+      if(action==='cafe-decor'){changedPiece='';decorMessage='';openDecor();return;}
+      if(action==='cafe-category'||action==='cafe-filter'){
+        if(categories.some(s=>s.id===id)){decorSlot=id;decorMode='pieces';changedPiece='';decorMessage='';refreshEditor({action,id},true);}
+        else if(id==='all'){decorMode='collection';refreshEditor(null,true);}return;
+      }
+      if(action==='cafe-mode'){if(['pieces','themes','collection'].includes(id)){decorMode=id;changedPiece='';refreshEditor({action,id},true);}return;}
+      if(action==='cafe-equip'||action==='cafe-wear'){
+        const d=D.decorations.find(d=>d.id===id);if(!d||!C.available(p,d))return;
+        changeLayout(()=>C.equip(p,id),`${d.name}换上啦，小熊很喜欢！`,id);
+        if(action==='cafe-wear')openDecor(d);else refreshEditor({action:'cafe-category',id:decorSlot});return;
+      }
+      if(action==='cafe-remove'){changeLayout(()=>C.removeProp(p,id),'收起来啦，留一点舒服的空白。');refreshEditor({action:'cafe-category',id});return;}
+      if(action==='cafe-theme'){const t=D.themes.find(t=>t.id===id);if(t){changeLayout(()=>C.equipTheme(p,id),`${t.name}搭配好啦，用的都是你已有的装饰。`,'theme');refreshEditor({action,id});}return;}
+      if(action==='cafe-undo'){if(layoutUndo){p.equipped={...layoutUndo.equipped};p.placements={...layoutUndo.placements};layoutUndo=null;changedPiece='';decorMessage='回到刚才的样子啦。';save();refreshEditor();}return;}
       if(action==='cafe-preview'){const r=C.recipe(id);if(r)play([phonetic(r.audio)],true);return;}
       if(action==='cafe-howto'){play([voice('howto-tap-drag')],true);return;}
       if(screen!=='kitchen'||!p.session)return;

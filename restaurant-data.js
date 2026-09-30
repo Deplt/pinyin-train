@@ -17,7 +17,9 @@
   ].map(([id,word,emoji,pinyin,initial,final,audio,finalAudio,nearInitial,nearFinal])=>({
     id,word,emoji,pinyin,parts:[initial,final],audio,partAudio:[initial,finalAudio],cards:[initial,final,nearInitial,nearFinal]
   }));
-  const slots=[{id:'hat',name:'厨师帽'},{id:'apron',name:'围裙'},{id:'table',name:'餐桌'},{id:'chair',name:'椅子'},{id:'room',name:'小摆设'},{id:'wall',name:'墙纸'},{id:'view',name:'窗外风景'}];
+  const slots=[{id:'hat',name:'帽子',icon:'👒'},{id:'apron',name:'围裙',icon:'👕'},{id:'table',name:'餐桌',icon:'🍽️'},{id:'chair',name:'椅子',icon:'🪑'},{id:'room',name:'小摆设',icon:'🪴'},{id:'wall',name:'墙纸',icon:'🎨'},{id:'view',name:'窗外',icon:'🌳'}];
+  const positions=[{id:'floor',name:'窗边',icon:'🪴',starter:'room-window'},{id:'shelf',name:'窗台',icon:'⭐'},{id:'wallart',name:'挂画',icon:'🖼️'},{id:'party',name:'角落',icon:'🎈'}];
+  const propPositions={'room-window':'floor','room-sprout':'floor','room-fishbowl':'floor','room-lamp':'shelf','room-rainbow':'wallart','room-clock':'wallart','room-balloon':'party'};
   // Keep released decoration IDs stable. These never use the train's sticker IDs or storage.
   const starters=[
     ['hat-white','hat','小白厨师帽'],['apron-white','apron','白白小围裙'],['table-wood','table','温暖木桌'],['chair-wood','chair','小木椅'],
@@ -36,9 +38,16 @@
     ['apron-rainbow','apron','彩虹围裙'],['hat-party','hat','派对尖尖帽'],['room-balloon','room','彩色气球'],['wall-leaf','wall','森林叶子墙'],
     ['view-sea','view','大海和小船']
   ];
-  const decorations=[...starters.map(d=>[...d,false]),...gifts.map(d=>[...d,true])].map(([id,slot,name,gift])=>({id,slot,name,gift}));
+  const decorations=[...starters.map(d=>[...d,false]),...gifts.map(d=>[...d,true])].map(([id,slot,name,gift])=>({id,slot,name,gift,...(slot==='room'?{position:propPositions[id]}:{})}));
+  // A theme is a preference list, never an unlock. Use the first owned piece in each list.
+  const themes=[
+    {id:'forest',name:'森林木屋',icon:'🌿',description:'温暖木色，窗边有一点绿',pieces:{hat:['hat-bear','hat-white'],apron:['apron-check','apron-white'],table:['table-picnic','table-wood'],chair:['chair-cat','chair-wood'],wall:['wall-leaf','wall-mint','wall-cream'],view:['view-day']},props:{floor:['room-sprout','room-window'],shelf:[],wallart:['room-clock'],party:[]}},
+    {id:'garden',name:'花园茶屋',icon:'🌼',description:'小花、兔耳和柔软的奶油色',pieces:{hat:['hat-flower','hat-bunny','hat-white'],apron:['apron-white'],table:['table-flower','table-wood'],chair:['chair-bunny','chair-wood'],wall:['wall-mint','wall-cream'],view:['view-day']},props:{floor:['room-sprout','room-window'],shelf:[],wallart:['room-rainbow'],party:[]}},
+    {id:'night',name:'星空小店',icon:'🌙',description:'点一盏暖灯，等星星来做客',pieces:{hat:['hat-crown','hat-white'],apron:['apron-dots','apron-white'],table:['table-star','table-wood'],chair:['chair-panda','chair-wood'],wall:['wall-star','wall-cream'],view:['view-night','view-day']},props:{floor:['room-window'],shelf:['room-lamp'],wallart:[],party:['room-balloon']}}
+  ];
+  const artAssets=['bear-gouache','forest-gouache','table-gouache','chair-gouache','plant-gouache','table-flower-gouache','table-picnic-gouache','table-star-gouache','chair-bunny-gouache','chair-panda-gouache','chair-cat-gouache','night-gouache'];
   const guests=[{name:'小兔',emoji:'🐰'},{name:'小熊',emoji:'🐻'},{name:'小狐狸',emoji:'🦊'},{name:'熊猫',emoji:'🐼'},{name:'小猫',emoji:'🐱'},{name:'小鹿',emoji:'🦌'}];
-  const data={recipes,decorations,slots,guests};
+  const data={recipes,decorations,slots,positions,themes,artAssets,guests};
   root.RestaurantData=data;
   if(typeof module!=='undefined')module.exports=data;
 })(typeof globalThis!=='undefined'?globalThis:window);

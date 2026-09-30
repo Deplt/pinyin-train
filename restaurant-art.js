@@ -3,6 +3,7 @@
   // Layered storybook scene. Stable decoration IDs still choose independent pieces;
   // both the room and its thumbnails use the same artwork and material definitions.
   const INK='#92755b';
+  const D=root.RestaurantData||(typeof require==='function'?require('./restaurant-data.js'):null);
   const ln=(w=2.4,c=INK)=>`stroke="${c}" stroke-width="${w*.62}" stroke-linejoin="round" stroke-linecap="round"`;
   const ART='assets/restaurant/art/';
   let uid=0;
@@ -24,14 +25,16 @@
     return `<defs>
       ${gradient('porcelain',['#fffef6','#f4ead8','#deceb4'])}${gradient('wood',['#e5c7a0','#c99e75','#ad7e59'])}
       ${gradient('woodDark',['#b9906c','#9c7453','#81634c'])}${gradient('gold',['#ffebae','#edc574','#c29a50'])}
-      ${gradient('rose',['#f3bec0','#dc969d','#bb7b85'])}${gradient('sage',['#b2c2a3','#91a483','#778e73'])}
+      ${gradient('rose',['#efd0cc','#dba4a1','#bb8587'])}${gradient('sage',['#c4cfb3','#9bae8a','#798f70'])}
+      ${gradient('blue',['#d0e5e8','#9fc3cc','#7a9da9'])}${gradient('navy',['#8c97b5','#5f7093','#465879'])}
+      ${gradient('berry',['#e4a7a2','#cb817e','#af6666'])}${gradient('leaf',['#b7c7a0','#93ad80','#738e67'])}
       <radialGradient id="${u}ground"><stop stop-color="#684c33" stop-opacity=".25"/><stop offset="1" stop-color="#684c33" stop-opacity="0"/></radialGradient>
       <filter id="${u}soft" x="-25%" y="-25%" width="150%" height="165%"><feDropShadow dx="0" dy="2" stdDeviation="1.6" flood-color="#685139" flood-opacity=".18"/></filter>
       <filter id="${u}paper"><feTurbulence type="fractalNoise" baseFrequency=".72" numOctaves="3" stitchTiles="stitch" seed="8"/><feColorMatrix type="saturate" values="0"/></filter>
     </defs>`;
   }
   function finish(markup,u){
-    const fills={'#fff':'porcelain','#fffaf2':'porcelain','#fff8ec':'porcelain','#c98f5d':'wood','#d39c68':'wood','#d8a574':'wood','#a8744a':'woodDark','#b27a4b':'woodDark','#ffd45c':'gold','#f3c25e':'gold','#fbd3dc':'rose','#f7b6c6':'rose'};
+    const fills={'#fff':'porcelain','#fffaf2':'porcelain','#fff8ec':'porcelain','#fff3dd':'porcelain','#c98f5d':'wood','#d39c68':'wood','#d8a574':'wood','#a8744a':'woodDark','#b27a4b':'woodDark','#ffd45c':'gold','#f3c25e':'gold','#f2c06b':'gold','#fbd3dc':'rose','#f7b6c6':'rose','#f48fa4':'rose','#f9b4c3':'rose','#ee5b5b':'berry','#e8574f':'berry','#f27a93':'berry','#8fd0e8':'blue','#7fc4d8':'blue','#86c1e8':'blue','#40508f':'navy','#6fb35a':'leaf','#8cc473':'leaf'};
     return markup.replace(/fill="(#[a-fA-F0-9]+)"/g,(match,color)=>fills[color]?`fill="url(#${u}${fills[color]})"`:match);
   }
 
@@ -139,6 +142,7 @@
       `<circle cx="430" cy="214" r="18" fill="#ffe8a0" opacity=".35" class="cafe-glow"/><rect x="424" y="228" width="12" height="28" rx="2" fill="#fff6e8" ${ln(2)}/>
       <path class="cafe-flame" d="M430 210q8 9 0 16q-8-7 0-16Z" fill="#ffb13d"/><ellipse cx="430" cy="258" rx="16" ry="5" fill="#f3c25e" ${ln(2)}/>`)
   };
+  for(const id of ['table-flower','table-picnic','table-star'])TABLE[id]=()=>`<image href="${ART}${id}-gouache.webp" x="316" y="216" width="228" height="137"/>`;
 
   // ---------- Chairs (drawn at centre x) ----------
   const legs=(cx,color)=>`<rect x="${cx-26}" y="296" width="7" height="42" rx="2" fill="${color}" ${ln(2)}/><rect x="${cx+19}" y="296" width="7" height="42" rx="2" fill="${color}" ${ln(2)}/>`;
@@ -165,6 +169,8 @@
       <rect x="${cx-39}" y="264" width="16" height="52" rx="8" fill="#f27a93" ${ln()}/><rect x="${cx+23}" y="264" width="16" height="52" rx="8" fill="#f27a93" ${ln()}/>
       <rect x="${cx-25}" y="286" width="50" height="30" rx="9" fill="#f9b4c3" ${ln()}/>`
   };
+  for(const id of ['chair-bunny','chair-panda','chair-cat'])CHAIR[id]=cx=>`<image href="${ART}${id}-gouache.webp" x="${cx-50}" y="201" width="100" height="146"/>`;
+  VIEW['view-night']=()=>`<image href="${ART}night-gouache.webp" x="28" y="94" width="134" height="138" preserveAspectRatio="xMidYMid slice"/>`;
 
   // ---------- Room props (each placed in its own corner) ----------
   const ROOM={
@@ -236,8 +242,12 @@
   const svg=(box,body,cls='cafe-art')=>`<svg class="${cls}" viewBox="${box.join(' ')}" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">${body}</svg>`;
   const pick=(equipped,slot,fallback)=>equipped[slot]||fallback;
 
-  function scene(equipped){
-    const u=`ca${++uid}-`,parts=shell(),room=ROOM[pick(equipped,'room','room-window')]||ROOM['room-window'],chair=CHAIR[pick(equipped,'chair','chair-wood')]||CHAIR['chair-wood'];
+  function scene(equipped,placements,changed=''){
+    const u=`ca${++uid}-`,parts=shell(),chair=CHAIR[pick(equipped,'chair','chair-wood')]||CHAIR['chair-wood'];
+    const legacy=D.decorations.find(d=>d.id===pick(equipped,'room','room-window'));
+    const props=placements||{[legacy?.position||'floor']:legacy?.id||'room-window'};
+    const layer=(id,markup)=>`<g class="cafe-piece ${changed===id?'cafe-piece-changed':''}" data-piece="${id}">${markup}</g>`;
+    const propLayers=front=>Object.entries(props).filter(([pos,id])=>id&&ROOM[id]&&(pos==='floor')===front).map(([,id])=>layer(id,finish(ROOM[id].draw(u),u))).join('');
     return svg([0,0,640,380],`${materials(u)}<defs>
       <radialGradient id="${u}light" cx=".16" cy=".25" r=".85"><stop stop-color="#fffdf0" stop-opacity=".68"/><stop offset="1" stop-color="#fffdf0" stop-opacity="0"/></radialGradient>
       <linearGradient id="${u}sun" x2="1" y2="1"><stop stop-color="#fff5cc" stop-opacity=".5"/><stop offset="1" stop-color="#fff5cc" stop-opacity="0"/></linearGradient>
@@ -248,9 +258,9 @@
       <g transform="translate(14 -48) scale(1.2)" filter="url(#${u}soft)">${windowFrame(u,pick(equipped,'view','view-day'))}</g>
       <path d="M54 211l136 17 220 137H157Z" fill="url(#${u}sun)"/>
       ${parts.rug}<ellipse cx="432" cy="330" rx="141" ry="23" fill="url(#${u}ground)"/>
-      <g filter="url(#${u}soft)">${finish(chair(302)+chair(564),u)}</g>
-      ${chef(pick(equipped,'hat','hat-white'),pick(equipped,'apron','apron-white'),u)}
-      <g filter="url(#${u}soft)">${finish((TABLE[pick(equipped,'table','table-wood')]||TABLE['table-wood'])(u),u)}${finish(room.draw(u),u)}</g>
+      <g filter="url(#${u}soft)">${propLayers(false)}${layer(equipped.chair,finish(chair(302)+chair(564),u))}</g>
+      ${layer(changed===equipped.apron?equipped.apron:equipped.hat,chef(pick(equipped,'hat','hat-white'),pick(equipped,'apron','apron-white'),u))}
+      <g filter="url(#${u}soft)">${layer(equipped.table,finish((TABLE[pick(equipped,'table','table-wood')]||TABLE['table-wood'])(u),u))}${propLayers(true)}</g>
       <rect width="640" height="380" filter="url(#${u}paper)" opacity=".045" style="mix-blend-mode:multiply" pointer-events="none"/>
       <g fill="#fffdf2" opacity=".7" class="cafe-sun-dust"><circle cx="257" cy="126" r="1.4"/><circle cx="289" cy="173" r="1"/><circle cx="130" cy="81" r="1.2"/></g>`,'cafe-art cafe-scene-art');
   }
