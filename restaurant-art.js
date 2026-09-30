@@ -142,7 +142,7 @@
       `<circle cx="430" cy="214" r="18" fill="#ffe8a0" opacity=".35" class="cafe-glow"/><rect x="424" y="228" width="12" height="28" rx="2" fill="#fff6e8" ${ln(2)}/>
       <path class="cafe-flame" d="M430 210q8 9 0 16q-8-7 0-16Z" fill="#ffb13d"/><ellipse cx="430" cy="258" rx="16" ry="5" fill="#f3c25e" ${ln(2)}/>`)
   };
-  for(const id of ['table-flower','table-picnic','table-star'])TABLE[id]=()=>`<image href="${ART}${id}-gouache.webp" x="316" y="216" width="228" height="137"/>`;
+  for(const id of ['table-flower','table-picnic','table-star','table-ocean','table-candy'])TABLE[id]=()=>`<image href="${ART}${id}-gouache.webp" x="316" y="216" width="228" height="137"/>`;
 
   // ---------- Chairs (drawn at centre x) ----------
   const legs=(cx,color)=>`<rect x="${cx-26}" y="296" width="7" height="42" rx="2" fill="${color}" ${ln(2)}/><rect x="${cx+19}" y="296" width="7" height="42" rx="2" fill="${color}" ${ln(2)}/>`;
@@ -169,7 +169,8 @@
       <rect x="${cx-39}" y="264" width="16" height="52" rx="8" fill="#f27a93" ${ln()}/><rect x="${cx+23}" y="264" width="16" height="52" rx="8" fill="#f27a93" ${ln()}/>
       <rect x="${cx-25}" y="286" width="50" height="30" rx="9" fill="#f9b4c3" ${ln()}/>`
   };
-  for(const id of ['chair-bunny','chair-panda','chair-cat'])CHAIR[id]=cx=>`<image href="${ART}${id}-gouache.webp" x="${cx-50}" y="201" width="100" height="146"/>`;
+  for(const id of ['chair-bunny','chair-panda','chair-cat','chair-sofa'])CHAIR[id]=cx=>`<image href="${ART}${id}-gouache.webp" x="${cx-50}" y="201" width="100" height="146"/>`;
+  CHAIR['chair-mushroom']=cx=>`<image href="${ART}chair-mushroom-gouache.webp" x="${cx-45}" y="257" width="90" height="90"/>`;
   VIEW['view-night']=()=>`<image href="${ART}night-gouache.webp" x="28" y="94" width="134" height="138" preserveAspectRatio="xMidYMid slice"/>`;
 
   // ---------- Room props (each placed in its own corner) ----------
@@ -270,7 +271,7 @@
     if(slot==='hat')return draw([130,48,165,216],chef(id,'apron-white',u));
     if(slot==='apron')return draw([130,84,165,271],chef('hat-white',id,u));
     if(slot==='table')return draw([308,190,244,168],(TABLE[id]||TABLE['table-wood'])(u));
-    if(slot==='chair')return draw([248,177,104,170],(CHAIR[id]||CHAIR['chair-wood'])(300));
+    if(slot==='chair')return draw(id==='chair-mushroom'?[250,253,100,97]:[248,177,104,170],(CHAIR[id]||CHAIR['chair-wood'])(300));
     if(slot==='wall')return draw([20,120,160,150],`${(WALL[id]||WALL['wall-cream'])(u)}${shell().wainscot}`);
     if(slot==='view')return draw([16,94,156,145],windowFrame(u,id));
     const room=ROOM[id]||ROOM['room-window'];

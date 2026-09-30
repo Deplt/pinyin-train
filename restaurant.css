@@ -48,7 +48,7 @@
 .cafe-editor-page{flex:1;min-height:0;display:flex;flex-direction:column;padding:0 0 16px}
 .cafe-editor-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none;padding:18px 0}
 .cafe-editor-heading h1{font-size:22px;line-height:1.4;letter-spacing:.5px}
-.cafe-editor-heading p{font-size:12px;color:#8c8371;margin-top:4px}
+.cafe-editor-heading p{font-size:13px;color:#776b57;margin-top:4px}
 .cafe-editor-heading .secondary{min-height:44px;border-color:#d3ddc9;background:#edf3e5;color:#56744f;padding:10px 17px}
 .cafe-editor-layout{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(330px,1fr);gap:24px}
 .cafe-stage{min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center}
@@ -65,28 +65,33 @@
 .cafe-hotspot:hover span,.cafe-hotspot:focus-visible span,.cafe-hotspot.active span{opacity:1}
 .cafe-drawer{min-height:0;min-width:0;display:flex;flex-direction:column;padding:15px;border:1px solid #e1e4d5;border-radius:24px;background:#fffdf8;box-shadow:0 6px 22px #6e765209}
 .cafe-drawer-modes{display:flex;flex:none;gap:4px;padding:4px;border-radius:15px;background:#f1f0e5}
-.cafe-drawer-modes button{flex:1;min-width:0;min-height:44px;padding:7px 3px;border-radius:11px;font-size:12px;white-space:nowrap;background:transparent;color:#928773}
-.cafe-drawer-modes button[aria-pressed=true]{background:#fffdf8;box-shadow:0 2px 7px #75603c15;color:#677b53;font-weight:700}
-.cafe-categories{display:flex;flex:none;gap:5px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#d9dfcc transparent;margin:12px -3px 0;padding:3px 3px 7px}
-.cafe-categories button{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:57px;min-height:61px;padding:6px 7px;background:transparent;border:1px solid transparent;border-radius:13px;font-size:11px;color:#938572}
-.cafe-categories button>span{font-size:23px;line-height:1.3}
-.cafe-categories button[aria-pressed=true]{background:#edf2e4;border-color:#cad6bb;color:#597249;font-weight:700}
+.cafe-drawer-modes button{flex:1;min-width:0;min-height:44px;padding:7px 3px;border-radius:11px;font-size:13px;white-space:nowrap;background:transparent;color:#716650}
+.cafe-drawer-modes button[aria-pressed=true]{background:#fffdf8;box-shadow:0 2px 7px #75603c15;color:#405b37;font-weight:700}
+.cafe-groups{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));flex:none;gap:5px;margin-top:12px}
+.cafe-groups button{display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;min-height:44px;padding:5px 4px;border:1px solid #e5e2d5;border-radius:12px;background:#faf7ef;color:#615740;font-size:13px;white-space:nowrap}
+.cafe-group-art{flex:none;display:block;width:27px;height:30px}.cafe-group-art .cafe-thumb{width:100%;height:100%}
+.cafe-groups button[aria-pressed=true]{background:#e5eddd;border-color:#a5b68c;color:#385533;font-weight:700;box-shadow:inset 0 0 0 1px #a5b68c}
+.cafe-categories{display:grid;grid-template-columns:repeat(var(--category-count),minmax(0,1fr));flex:none;gap:5px;margin-top:6px;padding:0}
+.cafe-categories button{min-width:0;min-height:36px;padding:5px 7px;background:#f8f5eb;border:1px solid transparent;border-radius:10px;font-size:13px;color:#6b604e}
+.cafe-categories button[aria-pressed=true]{background:#edf2e4;border-color:#a5b68c;color:#385533;font-weight:700}
+.cafe-groups button:focus-visible,.cafe-categories button:focus-visible,.cafe-choice:focus-visible{outline:3px solid #6f8d54;outline-offset:2px}
 .cafe-drawer-title{display:flex;flex:none;align-items:center;justify-content:space-between;gap:8px;margin:14px 1px 12px}
-.cafe-drawer-title h2{font-size:14px;font-weight:700;color:#69755c}
-.cafe-drawer-title>span{font-size:10px;color:#a09680;text-align:right}
+.cafe-drawer-title h2{font-size:15px;font-weight:700;color:#506146}
+.cafe-drawer-title>span{font-size:12px;color:#776b57;text-align:right}
 .cafe-choices{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:max-content;align-content:start;gap:10px;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-width:thin;scrollbar-color:#d9dfcc transparent;padding:3px 5px 10px 3px}
 .cafe-choices:focus-visible{outline:2px solid #a9bb8c;outline-offset:2px;border-radius:8px}
 .cafe-choice{position:relative;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9px 8px 11px;background:#f8f5eb;border:2px solid transparent;border-radius:17px;text-align:center}
 .cafe-choice-art{display:block;width:100%;height:101px;padding:2px 5px;overflow:hidden}
 .cafe-choice-art .cafe-thumb{width:100%;height:100%}
-.cafe-choice strong{font-size:12px;line-height:1.6;color:#76654e;margin-top:3px}
-.cafe-choice small{font-size:10px;line-height:1.6;color:#a2977e;margin-top:3px}
+.cafe-choice strong{font-size:14px;line-height:1.6;color:#594b38;margin-top:3px}
+.cafe-choice small{font-size:12px;line-height:1.6;color:#6b604e;margin-top:3px}
 .cafe-choice:not(:disabled):hover{border-color:#d0dac0;background:#f1f4e9}
-.cafe-choice.equipped{border-color:#a6b98b;background:#edf3e4}
-.cafe-choice.equipped small{color:#65824e;font-weight:700}
+.cafe-choice.equipped{border-color:#7c9b5f;background:#eaf2df;box-shadow:inset 0 0 0 1px #7c9b5f}
+.cafe-choice.equipped small{color:#3f602e;font-weight:700}
+.cafe-equipped-badge{position:absolute;right:7px;top:7px;width:23px;height:23px;display:grid;place-items:center;background:#55753e;color:#fffdf8;border-radius:50%;font-size:15px;font-weight:700;line-height:1}
 .cafe-choice.locked{background:#f5f2e9;border:1px dashed #e0ddcf}
 .cafe-choice.locked .cafe-choice-art{filter:grayscale(.65);opacity:.6}
-.cafe-choice .cafe-new{top:5px;right:5px;padding:2px 7px;font-size:10px;background:#c78365;box-shadow:none}
+.cafe-choice .cafe-new{top:5px;left:5px;right:auto;padding:2px 7px;font-size:11px;background:#a6573e;box-shadow:none}
 .cafe-empty-art{display:grid;place-items:center;color:#c4cbb5;font-size:51px;background:#f1f1e7;border-radius:12px}
 .cafe-empty-state{grid-column:1/-1;display:flex;align-items:center;flex-direction:column;text-align:center;gap:8px;padding:22px 8px;color:#8f8874}
 .cafe-empty-state>span{font-size:32px}.cafe-empty-state strong{font-size:13px}.cafe-empty-state p{font-size:11px;line-height:1.7}
@@ -95,9 +100,9 @@
 .cafe-theme-card:hover{border-color:#b6c69c;background:#f2f6e9}
 .cafe-theme-preview{display:block;width:100%;aspect-ratio:640/380;overflow:hidden;background:#f6eedf}
 .cafe-theme-copy{padding:12px 14px;display:flex;flex-direction:column;gap:5px}
-.cafe-theme-copy strong{font-size:14px;color:#6f7656}.cafe-theme-copy small{font-size:11px;color:#9d917a}.cafe-theme-copy b{font-size:11px;color:#7e8d5f;align-self:flex-end}
+.cafe-theme-copy strong{font-size:15px;color:#506146}.cafe-theme-copy small{font-size:12px;color:#716650}.cafe-theme-copy b{font-size:12px;color:#405b37;align-self:flex-end}
 .cafe-drawer-footer{flex:none;display:flex;align-items:center;justify-content:space-between;gap:6px;border-top:1px solid #ebe9dc;padding-top:5px;margin-top:5px}
-.cafe-drawer-footer>span{font-size:10px;color:#9d957f;line-height:1.5}
+.cafe-drawer-footer>span{font-size:12px;color:#716650;line-height:1.5}
 .cafe-drawer-footer .text-button{min-height:44px;white-space:nowrap;padding:8px 5px;font-size:12px;color:#7f8a5b}
 .cafe-drawer-footer button:disabled{opacity:.4}
 .cafe-piece-changed{transform-box:fill-box;transform-origin:50% 90%;animation:cafe-settle .5s ease-out}
@@ -116,29 +121,27 @@
   .cafe-stage{flex:none}.cafe-stage .cafe-scene.compact{border-radius:19px;max-width:450px}
   .cafe-scene-feedback{min-height:44px;padding:7px 4px;gap:8px}.cafe-scene-feedback p{font-size:11px;line-height:1.6}.cafe-chef-reaction{width:27px;height:27px;font-size:17px}.cafe-stage-note{display:none}
   .cafe-drawer{flex:1;border-radius:21px 21px 0 0;padding:10px 11px 0;box-shadow:0 -4px 20px #7b805809}
-  .cafe-drawer-modes button{font-size:11px}.cafe-categories{margin-top:7px;padding-bottom:5px;gap:4px}.cafe-categories button{min-width:55px;min-height:57px;font-size:10px;gap:3px}
-  .cafe-drawer-title{margin:8px 1px;font-size:12px}.cafe-drawer-title h2{font-size:12px}.cafe-drawer-title>span{font-size:9px}
-  .cafe-choices{gap:8px;padding-bottom:8px}.cafe-choice{padding:6px 6px 8px;border-radius:14px}.cafe-choice-art{height:83px}.cafe-choice strong{font-size:11px}.cafe-choice small{font-size:9px}
+  .cafe-drawer-modes button{font-size:12px}.cafe-groups{margin-top:7px;gap:4px}.cafe-groups button{font-size:13px;padding:4px 2px}.cafe-categories{margin-top:5px;gap:4px}.cafe-categories button{min-height:34px;padding:4px;font-size:13px}
+  .cafe-drawer-title{margin:8px 1px;font-size:13px}.cafe-drawer-title h2{font-size:13px}.cafe-drawer-title>span{font-size:11px}
+  .cafe-choices{gap:8px;padding-bottom:8px}.cafe-choice{padding:6px 6px 8px;border-radius:14px}.cafe-choice-art{height:83px}.cafe-choice strong{font-size:13px}.cafe-choice small{font-size:11px}
   .cafe-hotspot{border-radius:11px}.cafe-hotspot span{font-size:9px;padding:4px 6px;bottom:-7px}
   .cafe-drawer-footer{padding-bottom:env(safe-area-inset-bottom)}
 }
 @media(max-height:640px) and (min-width:600px){
   .shell:has(.cafe-editor-page) .topbar{display:flex;height:65px;min-height:65px;flex-wrap:nowrap;gap:12px}
   .shell:has(.cafe-editor-page) .brand small{display:none}.shell:has(.cafe-editor-page) .brand strong{font-size:18px}.shell:has(.cafe-editor-page) .nav button{font-size:12px}
-  .cafe-editor-heading{padding:7px 0}.cafe-editor-heading h1{font-size:17px}.cafe-editor-heading p{display:none}
+  .cafe-editor-page{padding-bottom:6px}.cafe-editor-heading{padding:5px 0}.cafe-editor-heading h1{font-size:17px}.cafe-editor-heading p{display:none}.cafe-editor-heading .secondary{min-height:36px;padding:6px 12px;font-size:12px}
   .cafe-editor-layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(270px,1fr);gap:14px}
   .cafe-stage{min-height:0}.cafe-stage .cafe-scene.compact{width:min(100%,calc((100dvh - 175px)*1.6842))}.cafe-stage-note{display:none}.cafe-scene-feedback{min-height:37px;padding:5px}.cafe-scene-feedback p{font-size:10px}
-  .cafe-drawer{border-radius:19px;padding:8px}.cafe-drawer-modes{padding:2px}.cafe-drawer-modes button{min-height:34px;font-size:11px}.cafe-categories{margin-top:3px;padding-bottom:3px}.cafe-categories button{min-height:38px;gap:0}.cafe-categories button>span{font-size:18px}.cafe-drawer-title{margin:4px 0}.cafe-drawer-title h2{font-size:11px}.cafe-choice-art{height:65px}.cafe-drawer-footer{margin-top:3px;padding-top:2px}.cafe-drawer-footer .text-button{min-height:32px;padding:5px}
-  .cafe-categories{scrollbar-width:none}.cafe-categories::-webkit-scrollbar{display:none}.cafe-drawer-title{display:none}
-  .cafe-choice{padding:6px}.cafe-choice-art{height:40px}.cafe-choice strong{font-size:11px;line-height:1.4}.cafe-choice small{font-size:10px;line-height:1.4;margin-top:2px}
-  .cafe-theme-card{flex-direction:row;align-items:center}.cafe-theme-preview{flex:none;width:45%}.cafe-theme-copy{padding:8px;gap:4px;min-width:0}.cafe-theme-copy strong{font-size:12px}.cafe-theme-copy small{font-size:10px;line-height:1.6}
+  .cafe-drawer{border-radius:19px;padding:8px}.cafe-drawer-modes{padding:2px}.cafe-drawer-modes button{min-height:34px;font-size:12px}.cafe-groups{margin-top:4px;gap:4px}.cafe-groups button{min-height:34px;font-size:12px;padding:2px}.cafe-group-art{width:23px;height:26px}.cafe-categories{margin-top:4px}.cafe-categories button{min-height:30px;font-size:12px;padding:3px}.cafe-drawer-title{display:none}.cafe-drawer-footer{margin-top:3px;padding-top:2px}.cafe-drawer-footer .text-button{min-height:32px;padding:5px}
+  .cafe-choice{padding:6px}.cafe-choice-art{height:37px}.cafe-choice strong{font-size:12px;line-height:1.4}.cafe-choice small{font-size:11px;line-height:1.4;margin-top:2px}
+  .cafe-theme-card{flex-direction:row;align-items:center}.cafe-theme-preview{flex:none;width:45%}.cafe-theme-copy{padding:8px;gap:4px;min-width:0}.cafe-theme-copy strong{font-size:13px}.cafe-theme-copy small{font-size:11px;line-height:1.6}
 }
 @media(max-width:420px) and (max-height:720px){
   .shell:has(.cafe-editor-page) .topbar{height:96px;min-height:96px}
   .cafe-editor-heading{padding:6px 0}.cafe-editor-heading h1{font-size:15px}.cafe-editor-heading .secondary{min-height:36px;padding:6px 10px}
-  .cafe-stage .cafe-scene.compact{max-width:min(310px,calc((100dvh - 435px)*1.6842))}.cafe-scene-feedback{min-height:30px;padding:3px}.cafe-chef-reaction{width:23px;height:23px}
-  .cafe-drawer-modes{padding:3px}.cafe-drawer-modes button{min-height:38px;font-size:10px;padding:6px 2px}.cafe-categories{margin-top:4px;padding-bottom:3px}.cafe-categories button{min-height:44px;gap:1px;padding:4px}.cafe-categories button>span{font-size:20px}
-  .cafe-categories{scrollbar-width:none}.cafe-categories::-webkit-scrollbar{display:none}
-  .cafe-drawer-title{display:none}.cafe-drawer-footer .text-button{min-height:36px;padding:6px}.cafe-choice-art{height:44px}
-  .cafe-theme-card{flex-direction:row;align-items:center}.cafe-theme-preview{flex:none;width:43%}.cafe-theme-copy{padding:8px;gap:4px;min-width:0}.cafe-theme-copy strong{font-size:12px}.cafe-theme-copy small{font-size:10px;line-height:1.6}
+  .cafe-stage .cafe-scene.compact{max-width:min(310px,calc((100dvh - 461px)*1.6842))}.cafe-scene-feedback{min-height:30px;padding:3px}.cafe-chef-reaction{width:23px;height:23px}
+  .cafe-drawer-modes{padding:3px}.cafe-drawer-modes button{min-height:38px;font-size:11px;padding:6px 2px}.cafe-groups{margin-top:4px;gap:3px}.cafe-groups button{min-height:38px;gap:3px;font-size:12px;padding:3px 2px}.cafe-group-art{width:22px;height:26px}.cafe-categories{margin-top:4px}.cafe-categories button{min-height:30px;font-size:12px;padding:3px}
+  .cafe-drawer-title{display:none}.cafe-drawer-footer .text-button{min-height:36px;padding:6px}.cafe-choice-art{height:44px}.cafe-choice strong{font-size:12px}.cafe-choice small{font-size:11px}
+  .cafe-theme-card{flex-direction:row;align-items:center}.cafe-theme-preview{flex:none;width:43%}.cafe-theme-copy{padding:8px;gap:4px;min-width:0}.cafe-theme-copy strong{font-size:13px}.cafe-theme-copy small{font-size:11px;line-height:1.6}
 }

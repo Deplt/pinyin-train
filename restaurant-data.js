@@ -45,9 +45,15 @@
     {id:'garden',name:'花园茶屋',icon:'🌼',description:'小花、兔耳和柔软的奶油色',pieces:{hat:['hat-flower','hat-bunny','hat-white'],apron:['apron-white'],table:['table-flower','table-wood'],chair:['chair-bunny','chair-wood'],wall:['wall-mint','wall-cream'],view:['view-day']},props:{floor:['room-sprout','room-window'],shelf:[],wallart:['room-rainbow'],party:[]}},
     {id:'night',name:'星空小店',icon:'🌙',description:'点一盏暖灯，等星星来做客',pieces:{hat:['hat-crown','hat-white'],apron:['apron-dots','apron-white'],table:['table-star','table-wood'],chair:['chair-panda','chair-wood'],wall:['wall-star','wall-cream'],view:['view-night','view-day']},props:{floor:['room-window'],shelf:['room-lamp'],wallart:[],party:['room-balloon']}}
   ];
-  const artAssets=['bear-gouache','forest-gouache','table-gouache','chair-gouache','plant-gouache','table-flower-gouache','table-picnic-gouache','table-star-gouache','chair-bunny-gouache','chair-panda-gouache','chair-cat-gouache','night-gouache'];
+  const decorationGroups=[
+    {id:'wear',name:'穿搭',icon:'hat-white',categories:['hat','apron']},
+    {id:'furniture',name:'家具',icon:'table-wood',categories:['table','chair']},
+    {id:'props',name:'摆设',icon:'room-sprout',categories:['floor','shelf','wallart','party']},
+    {id:'environment',name:'环境',icon:'view-day',categories:['wall','view']}
+  ];
+  const artAssets=['bear-gouache','forest-gouache','table-gouache','chair-gouache','plant-gouache','table-flower-gouache','table-picnic-gouache','table-star-gouache','chair-bunny-gouache','chair-panda-gouache','chair-cat-gouache','night-gouache','table-ocean-gouache','table-candy-gouache','chair-mushroom-gouache','chair-sofa-gouache'];
   const guests=[{name:'小兔',emoji:'🐰'},{name:'小熊',emoji:'🐻'},{name:'小狐狸',emoji:'🦊'},{name:'熊猫',emoji:'🐼'},{name:'小猫',emoji:'🐱'},{name:'小鹿',emoji:'🦌'}];
-  const data={recipes,decorations,slots,positions,themes,artAssets,guests};
+  const data={recipes,decorations,slots,positions,themes,decorationGroups,artAssets,guests};
   root.RestaurantData=data;
   if(typeof module!=='undefined')module.exports=data;
 })(typeof globalThis!=='undefined'?globalThis:window);
