@@ -1,14 +1,25 @@
 (function(root){
   'use strict';
   const D=root.RestaurantData,C=root.RestaurantCore,A=root.RestaurantArt;
+  const LOOKS_KEY='pinyin-restaurant-looks-v1',HISTORY_LIMIT=20;
   const esc=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function create({onChange,player,storage}){
     let saved,storageAvailable=true;
     try{storage=storage||root.localStorage;const raw=storage.getItem(C.STORAGE_KEY);try{saved=JSON.parse(raw);}catch{saved=null;}}catch{storageAvailable=false;}
     const p=C.restore(saved);
-    let screen='room',decorSlot='table',decorMode='pieces',decorMessage='',layoutUndo=null,changedPiece='',audioToken=0,audioError='',playing=false;
+    let screen='room',decorSlot='table',decorMode='pieces',collectionGroup='all',decorMessage='',changedPiece='',audioToken=0,audioError='',playing=false;
+    const undo=[],redo=[];
+    let looks=[];
+    function validLayout(raw){
+      if(!raw||typeof raw.equipped!=='object'||typeof raw.placements!=='object')return null;
+      const equipped={},placements={};
+      for(const slot of D.slots){const d=D.decorations.find(d=>d.id===raw.equipped?.[slot.id]&&d.slot===slot.id);if(!d||!C.available(p,d))return null;equipped[slot.id]=d.id;}
+      for(const pos of D.positions){const id=raw.placements?.[pos.id],d=D.decorations.find(d=>d.id===id&&d.position===pos.id);if(id!==null&&(!d||!C.available(p,d)))return null;placements[pos.id]=id;}
+      return {equipped,placements};
+    }
+    try{const raw=JSON.parse(storage.getItem(LOOKS_KEY));if(raw?.version===1&&Array.isArray(raw.looks))looks=raw.looks.slice(0,3).map(validLayout).filter(Boolean);}catch{}
     let drag=null,suppressClickUntil=0;
-    const save=()=>{try{storage.setItem(C.STORAGE_KEY,JSON.stringify(p));}catch{storageAvailable=false;}};
+    const save=()=>{try{storage.setItem(C.STORAGE_KEY,JSON.stringify(p));storageAvailable=true;}catch{storageAvailable=false;}};
     const current=()=>C.recipe(p.session?.orders[p.session.index].recipeId);
     const voice=name=>`assets/restaurant/voice/${name}.mp3`;
     const phonetic=name=>`assets/audio/${encodeURIComponent(name)}.mp3`;
@@ -78,10 +89,9 @@
     function toggleSound(){p.sound=!p.sound;save();stopAudio();onChange();}
     function scene(compact=false,interactive=false){
       const equipped=[...D.slots.filter(s=>s.id!=='room').map(s=>D.decorations.find(d=>d.id===p.equipped[s.id])),...Object.values(p.placements).filter(Boolean).map(id=>D.decorations.find(d=>d.id===id))];
-      const areas=[['hat','帽子',25,8,20,30],['apron','围裙',28,57,14,30],['table','餐桌',49,57,34,36],['chair','椅子',85,50,13,43],['floor','窗边摆设',3,56,20,38],['wallart','墙面摆设',86,14,13,28],['wall','墙纸',54,20,30,22],['view','窗外风景',3,17,24,39]];
-      if(decorSlot==='shelf')areas.push(['shelf','窗台摆设',12,42,16,20]);
-      if(decorSlot==='party')areas.push(['party','角落摆设',85,18,14,68]);
-      return `<div class="cafe-scene ${compact?'compact':''} ${interactive?'cafe-scene-editable':''}" role="${interactive?'group':'img'}" aria-label="我的餐厅：${equipped.map(d=>d.name).join('、')}">${A.scene(p.equipped,p.placements,changedPiece)}${interactive?`<div class="cafe-hotspots">${areas.map(([id,name,x,y,w,h])=>`<button class="cafe-hotspot ${decorSlot===id&&decorMode==='pieces'?'active':''}" data-action="cafe-category" data-id="${id}" aria-label="更换${name}" style="left:${x}%;top:${y}%;width:${w}%;height:${h}%"><span>${decorSlot===id?'✎':'＋'} ${name}</span></button>`).join('')}</div>`:''}</div>`;
+      const corner=decorSlot==='party'||(!p.placements.wallart&&p.placements.party);
+      const areas=[['hat','帽子',28,8,20,30],['apron','围裙',28,57,14,30],['table','餐桌',49,57,34,36],['chair','椅子',85,50,13,43],['floor','窗边摆设',3,56,20,38],[corner?'party':'wallart',corner?'角落摆设':'墙面摆设',86,14,13,30],['shelf','窗台摆设',12,40,16,16],['wall','墙纸',54,20,30,22],['view','窗外风景',3,17,24,23]];
+      return `<div class="cafe-scene ${compact?'compact':''} ${interactive?'cafe-scene-editable':''}" role="${interactive?'group':'img'}" aria-label="我的餐厅：${equipped.map(d=>d.name).join('、')}">${A.scene(p.equipped,p.placements,changedPiece)}${interactive?`<div class="cafe-hotspots">${areas.map(([id,name,x,y,w,h])=>`<button class="cafe-hotspot ${decorSlot===id&&decorMode==='pieces'?'active':''}" data-action="cafe-category" data-id="${id}" aria-label="更换${name}" style="left:${x}%;top:${y}%;width:${w}%;height:${h}%"><span>${decorSlot===id?'✎':'＋'} ${name}</span></button>`).join('')}</div><button class="cafe-expand" data-action="cafe-room-preview" aria-label="放大查看餐厅" title="放大查看餐厅">⤢</button>`:''}</div>`;
     }
     const categories=[...D.slots.filter(s=>!['room','wall','view'].includes(s.id)),...D.positions,...D.slots.filter(s=>['wall','view'].includes(s.id))];
     const groupFor=id=>D.decorationGroups.find(g=>g.categories.includes(id));
@@ -89,21 +99,32 @@
     function selectCategory(id){decorSlot=id;lastCategory[groupFor(id).id]=id;decorMode='pieces';changedPiece='';decorMessage='';}
     const worn=d=>d.position?p.placements[d.position]===d.id:p.equipped[d.slot]===d.id;
     const layout=()=>({equipped:{...p.equipped},placements:{...p.placements}});
-    function refreshEditor(focus,resetChoices=false){
+    function refreshEditor(focus,resetChoices=false,reveal=false){
       const list=document.querySelector('.cafe-choices'),top=resetChoices?0:list?.scrollTop||0;
       onChange();
       const nextList=document.querySelector('.cafe-choices');
       if(nextList)nextList.scrollTop=top;
       if(focus){
         const scope=focus.action==='cafe-category'?'.cafe-categories ':focus.action==='cafe-group'?'.cafe-groups ':'';
-        const target=document.querySelector(`${scope}[data-action="${focus.action}"][data-id="${focus.id||''}"]`);
+        const target=document.querySelector(`${scope}[data-action="${focus.action}"]${focus.id===undefined?'':`[data-id="${focus.id}"]`}`);
         target?.focus({preventScroll:true});
+        if(reveal)target?.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
       }
     }
     function changeLayout(change,message,piece=''){
       const before=layout();if(!change())return;
-      if(JSON.stringify(before)!==JSON.stringify(layout())){layoutUndo=before;save();}
+      if(JSON.stringify(before)===JSON.stringify(layout())){decorMessage='这套搭配已经用上啦。';changedPiece='';return;}
+      undo.push(before);if(undo.length>HISTORY_LIMIT)undo.shift();redo.length=0;save();
       decorMessage=message;changedPiece=piece;
+    }
+    function restoreLayout(value){p.equipped={...value.equipped};p.placements={...value.placements};}
+    function rememberLook(index){
+      const value=layout(),duplicate=looks.findIndex(item=>JSON.stringify(item)===JSON.stringify(value));
+      if(duplicate>=0){decorMessage=`这套已经记在「我的搭配 ${duplicate+1}」里啦。`;refreshEditor({action:'cafe-look',id:String(duplicate)});return;}
+      const next=[...looks];if(index===undefined){if(next.length===3)return;index=next.length;}next[index]=value;
+      try{storage.setItem(LOOKS_KEY,JSON.stringify({version:1,looks:next}));looks=next;decorMessage=`记住「我的搭配 ${index+1}」啦，下次还能换回来。`;}
+      catch{decorMessage='这套暂时没记住，浏览器没能保存。可以稍后再试。';}
+      refreshEditor(looks[index]?{action:'cafe-look',id:String(index)}:{action:'cafe-look-save'},false,true);
     }
     function openDecor(d){
       const gift=d||D.decorations.find(d=>d.id===p.session?.rewards.at(-1));
@@ -151,18 +172,21 @@
       const group=groupFor(decorSlot),subcategories=categories.filter(s=>group.categories.includes(s.id));
       const matching=D.decorations.filter(d=>d.position?d.position===decorSlot:d.slot===decorSlot);
       const owned=matching.filter(d=>C.available(p,d)).sort((a,b)=>Number(fresh.includes(b.id))-Number(fresh.includes(a.id)));
-      const shown=decorMode==='collection'?[...D.decorations].sort((a,b)=>Number(C.available(p,b))-Number(C.available(p,a))):owned;
-      const card=d=>{const unlocked=C.available(p,d),equipped=worn(d);return `<button class="cafe-choice ${unlocked?'':'locked'} ${equipped?'equipped':''}" data-action="cafe-equip" data-id="${d.id}" aria-label="${unlocked?equipped?'正在用':'用上':'尚未解锁'}${d.name}" aria-pressed="${equipped}" ${!unlocked||equipped?'disabled':''}>${fresh.includes(d.id)?'<span class="cafe-new">新</span>':''}${equipped?'<span class="cafe-equipped-badge" aria-hidden="true">✓</span>':''}<span class="cafe-choice-art" aria-hidden="true">${thumb(d)}</span><strong>${d.name}</strong><small>${equipped?'✓ 正在用':unlocked?'点一下换上':`🔒 再接待 ${C.guestsUntil(p,d)} 位`}</small></button>`;};
+      const collected=collectionGroup==='all'?D.decorations:D.decorations.filter(d=>groupFor(d.position||d.slot).id===collectionGroup);
+      const shown=decorMode==='collection'?[...collected].sort((a,b)=>Number(C.available(p,b))-Number(C.available(p,a))):owned;
+      const card=d=>{const unlocked=C.available(p,d),equipped=worn(d);return `<button class="cafe-choice ${unlocked?'':'locked'} ${equipped?'equipped':''}" data-action="${unlocked?'cafe-equip':'cafe-gift-info'}" data-id="${d.id}" aria-label="${unlocked?equipped?'正在用':'用上':'尚未解锁'}${d.name}${unlocked?'':'，查看解锁方法'}" aria-pressed="${equipped}" ${equipped?'aria-disabled="true"':''}>${fresh.includes(d.id)?'<span class="cafe-new">新</span>':''}${equipped?'<span class="cafe-equipped-badge" aria-hidden="true">✓</span>':''}<span class="cafe-choice-art" aria-hidden="true">${thumb(d)}</span><strong>${d.name}</strong><small>${equipped?'✓ 正在用':unlocked?'点一下换上':`🔒 再接待 ${C.guestsUntil(p,d)} 位`}</small></button>`;};
       const next=C.nextGift(p);
-      const choices=decorMode==='themes'?D.themes.map(t=>{const preview=C.themeLayout(p,t.id);return `<button class="cafe-theme-card" data-action="cafe-theme" data-id="${t.id}" aria-label="搭配${t.name}"><span class="cafe-theme-preview" aria-hidden="true">${A.scene(preview.equipped,preview.placements)}</span><span class="cafe-theme-copy"><strong>${t.icon} ${t.name}</strong><small>${t.description}</small><b>一键搭配 →</b></span></button>`;}).join(''):
-        `${pos&&decorMode==='pieces'?`<button class="cafe-choice cafe-choice-empty ${p.placements[pos.id]?'':'equipped'}" data-action="cafe-remove" data-id="${pos.id}" ${p.placements[pos.id]?'':'disabled'}><span class="cafe-choice-art cafe-empty-art" aria-hidden="true">◌</span><strong>留一点空白</strong><small>${p.placements[pos.id]?'收起这里的摆设':'✓ 这里空着'}</small></button>`:''}${shown.map(card).join('')}${decorMode==='pieces'&&!owned.length?'<div class="cafe-empty-state"><span>🎁</span><strong>这里的小礼物还在路上</strong><p>接待三位朋友，就能收到一件新装饰。</p></div>':''}`;
+      const previewCard=(value,title,description,action,id,label=title)=>`<button class="cafe-theme-card" data-action="${action}" data-id="${id}" aria-label="搭配${label}"><span class="cafe-theme-preview" aria-hidden="true">${A.scene(value.equipped,value.placements)}</span><span class="cafe-theme-copy"><strong>${title}</strong><small>${description}</small><b>一键搭配 →</b></span></button>`;
+      const choices=decorMode==='themes'?`<div class="cafe-look-tools"><h3>我记住的搭配 <small>${looks.length} / 3</small></h3><button class="text-button" data-action="cafe-look-save" ${looks.length===3?'disabled':''}>${looks.length===3?'三套都记住啦':'＋ 记住现在这套'}</button></div>${looks.length?looks.map((value,i)=>`<div class="cafe-saved-look">${previewCard(value,`我的搭配 ${i+1}`,'上次喜欢的小店模样','cafe-look',i)}<button class="text-button cafe-look-update" data-action="cafe-look-update" data-id="${i}" aria-label="把我的搭配 ${i+1} 更新为现在这套">用现在这套更新 ↺</button></div>`).join(''):'<p class="cafe-look-empty">喜欢现在的样子？记住它，下次一键换回来。</p>'}<h3 class="cafe-theme-heading">试试主题搭配</h3>${D.themes.map(t=>previewCard(C.themeLayout(p,t.id),`${t.icon} ${t.name}`,t.description,'cafe-theme',t.id,t.name)).join('')}`:
+        `${pos&&decorMode==='pieces'?`<button class="cafe-choice cafe-choice-empty ${p.placements[pos.id]?'':'equipped'}" data-action="cafe-remove" data-id="${pos.id}" aria-label="${p.placements[pos.id]?'收起':'已经收起'}${pos.name}摆设" aria-pressed="${!p.placements[pos.id]}" ${p.placements[pos.id]?'':'aria-disabled="true"'}>${p.placements[pos.id]?'':'<span class="cafe-equipped-badge" aria-hidden="true">✓</span>'}<span class="cafe-choice-art cafe-empty-art" aria-hidden="true">◌</span><strong>留一点空白</strong><small>${p.placements[pos.id]?'收起这里的摆设':'✓ 这里空着'}</small></button>`:''}${shown.map(card).join('')}${decorMode==='pieces'&&!owned.length?'<div class="cafe-empty-state"><span>🎁</span><strong>这里的小礼物还在路上</strong><p>接待三位朋友，就能收到一件新装饰。</p><button class="text-button" data-action="cafe-mode" data-id="collection">看看下一份礼物 →</button></div>':''}`;
       return `<div class="cafe-editor-heading"><div><h1>把喜欢的装饰摆上去</h1><p>我的小餐厅，我来布置</p></div><button class="secondary" data-action="cafe-room">完成 ✓</button></div>
         <div class="cafe-editor-layout"><section class="cafe-stage" aria-label="餐厅换装预览">${scene(true,true)}<div class="cafe-scene-feedback"><span class="cafe-chef-reaction" aria-hidden="true">${changedPiece?'♥':'✦'}</span><p role="status" aria-live="polite">${esc(decorMessage||'点点帽子、餐桌或窗户，换上你喜欢的装饰。')}</p></div><div class="cafe-stage-note">每一份小礼物，都让小店更像你的家。</div></section>
         <section class="cafe-drawer" aria-label="选择餐厅装饰"><div class="cafe-drawer-modes" role="group" aria-label="装饰玩法">${[{id:'pieces',name:'🧺 我的装饰'},{id:'themes',name:'✨ 帮我搭配'},{id:'collection',name:'🎁 礼物图鉴'}].map(m=>`<button data-action="cafe-mode" data-id="${m.id}" aria-pressed="${decorMode===m.id}">${m.name}</button>`).join('')}</div>
-        ${decorMode==='pieces'?`<div class="cafe-groups" role="group" aria-label="装饰大类">${D.decorationGroups.map(g=>{const icon=D.decorations.find(d=>d.id===g.icon);return `<button data-action="cafe-group" data-id="${g.id}" aria-pressed="${group.id===g.id}"><span class="cafe-group-art" aria-hidden="true">${thumb(icon)}</span><span>${g.name}</span></button>`;}).join('')}</div><div class="cafe-categories" role="group" aria-label="${group.name}分类" style="--category-count:${subcategories.length}">${subcategories.map(s=>`<button data-action="cafe-category" data-id="${s.id}" aria-pressed="${decorSlot===s.id}">${s.name}</button>`).join('')}</div>`:''}
+        ${decorMode==='pieces'?`<div class="cafe-groups" role="group" aria-label="装饰大类">${D.decorationGroups.map(g=>{const icon=D.decorations.find(d=>d.id===g.icon);return `<button data-action="cafe-group" data-id="${g.id}" aria-pressed="${group.id===g.id}"><span class="cafe-group-art" aria-hidden="true">${thumb(icon)}</span><span>${g.name}</span></button>`;}).join('')}</div><div class="cafe-categories" role="group" aria-label="${group.name}分类" style="--category-count:${subcategories.length}">${subcategories.map(s=>`<button data-action="cafe-category" data-id="${s.id}" aria-pressed="${decorSlot===s.id}">${s.name}</button>`).join('')}</div>`:decorMode==='collection'?`<div class="cafe-collection-groups" role="group" aria-label="礼物分类">${[{id:'all',name:'全部'},...D.decorationGroups].map(g=>`<button data-action="cafe-collection-group" data-id="${g.id}" aria-pressed="${collectionGroup===g.id}">${g.name}</button>`).join('')}</div>`:''}
         <div class="cafe-drawer-title"><h2>${decorMode==='themes'?'挑一种小店的心情':decorMode==='collection'?`已收集 ${p.unlocked.length} / ${gifts.length} 件礼物`:`${category?.icon||''} ${category?.name||'我的装饰'}`}</h2><span>${decorMode==='themes'?'只搭配已拥有的装饰':decorMode==='collection'?'每轮营业送一件':'点图片就能换上'}</span></div>
         <div class="cafe-choices ${decorMode==='themes'?'cafe-theme-choices':''}" tabindex="0" aria-label="${decorMode==='themes'?'餐厅主题':'可选装饰'}">${choices}</div>
-        <div class="cafe-drawer-footer"><span>${next?`下一份：${next.name}`:'小礼物都集齐啦！'}</span><button class="text-button" data-action="cafe-undo" ${layoutUndo?'':'disabled'}>↶ 撤销</button></div></section></div>`;
+        <div class="cafe-drawer-footer"><span>${next?`下一份：${next.name}`:'小礼物都集齐啦！'}</span><div class="cafe-history" role="group" aria-label="搭配历史"><button class="text-button" data-action="cafe-undo" aria-disabled="${!undo.length}" aria-label="撤销上一次搭配">↶ 撤销</button><button class="text-button" data-action="cafe-redo" aria-disabled="${!redo.length}" aria-label="重做上一次搭配">↷ 重做</button></div></div></section></div>
+        <dialog id="cafe-room-preview" class="cafe-preview-dialog" aria-labelledby="cafe-preview-title"><div class="modal-top"><h2 id="cafe-preview-title">我的小餐厅</h2><button class="secondary" data-action="cafe-preview-close">收起大图 ×</button></div><div class="cafe-preview-picture" role="img" aria-label="我的小餐厅"></div></dialog>`;
     }
     function render(){cancelDrag();return `<main class="cafe ${screen==='decor'?'cafe-editor-page':''}">${screen==='kitchen'?kitchen():screen==='decor'?decor():room()}${screen==='decor'?'':`<p id="cafe-audio-status" class="cafe-audio-status" role="status">${audioError||'没听清？小喇叭可以反复点。'}</p>`}${warning()}</main>`;}
     function handleAction(el){
@@ -179,14 +203,31 @@
         else if(id==='all'){decorMode='collection';refreshEditor(null,true);}return;
       }
       if(action==='cafe-mode'){if(['pieces','themes','collection'].includes(id)){decorMode=id;changedPiece='';refreshEditor({action,id},true);}return;}
-      if(action==='cafe-equip'||action==='cafe-wear'){
-        const d=D.decorations.find(d=>d.id===id);if(!d||!C.available(p,d))return;
-        changeLayout(()=>C.equip(p,id),`${d.name}换上啦，小熊很喜欢！`,id);
-        if(action==='cafe-wear')openDecor(d);else refreshEditor({action:'cafe-category',id:decorSlot});return;
+      if(action==='cafe-collection-group'){if(id==='all'||D.decorationGroups.some(g=>g.id===id)){collectionGroup=id;refreshEditor({action,id},true);}return;}
+      if(action==='cafe-gift-info'){
+        const d=D.decorations.find(d=>d.id===id);if(d&&!C.available(p,d)){decorMessage=`再接待 ${C.guestsUntil(p,d)} 位朋友，就能收到${d.name}。每轮接待三位，礼物会按顺序送来。`;changedPiece='';refreshEditor({action,id});}return;
       }
-      if(action==='cafe-remove'){changeLayout(()=>C.removeProp(p,id),'收起来啦，留一点舒服的空白。');refreshEditor({action:'cafe-category',id});return;}
+      if(action==='cafe-room-preview'){
+        const dialog=document.querySelector('#cafe-room-preview');if(!dialog)return;
+        const picture=dialog.querySelector('.cafe-preview-picture');picture.innerHTML=A.scene(p.equipped,p.placements);
+        picture.setAttribute('aria-label',document.querySelector('.cafe-scene').getAttribute('aria-label'));
+        dialog.showModal();dialog.onclose=()=>document.querySelector('[data-action="cafe-room-preview"]')?.focus({preventScroll:true});return;
+      }
+      if(action==='cafe-preview-close'){document.querySelector('#cafe-room-preview')?.close();return;}
+      if(action==='cafe-look-save'){rememberLook();return;}
+      if(action==='cafe-look-update'){if(/^[0-2]$/.test(id)&&looks[Number(id)])rememberLook(Number(id));return;}
+      if(action==='cafe-look'){const value=/^[0-2]$/.test(id)&&validLayout(looks[Number(id)]);if(value){changeLayout(()=>{restoreLayout(value);return true;},`换回「我的搭配 ${Number(id)+1}」啦。`,'theme');refreshEditor({action,id});}return;}
+      if(action==='cafe-equip'||action==='cafe-wear'){
+        const d=D.decorations.find(d=>d.id===id);if(!d||!C.available(p,d)||worn(d))return;
+        changeLayout(()=>C.equip(p,id),`${d.name}换上啦，小熊很喜欢！`,id);
+        if(action==='cafe-wear')openDecor(d);else refreshEditor({action:'cafe-equip',id});return;
+      }
+      if(action==='cafe-remove'){if(p.placements[id]){changeLayout(()=>C.removeProp(p,id),'收起来啦，留一点舒服的空白。');refreshEditor({action,id});}return;}
       if(action==='cafe-theme'){const t=D.themes.find(t=>t.id===id);if(t){changeLayout(()=>C.equipTheme(p,id),`${t.name}搭配好啦，用的都是你已有的装饰。`,'theme');refreshEditor({action,id});}return;}
-      if(action==='cafe-undo'){if(layoutUndo){p.equipped={...layoutUndo.equipped};p.placements={...layoutUndo.placements};layoutUndo=null;changedPiece='';decorMessage='回到刚才的样子啦。';save();refreshEditor();}return;}
+      if(action==='cafe-undo'||action==='cafe-redo'){
+        const source=action==='cafe-undo'?undo:redo,target=action==='cafe-undo'?redo:undo;
+        if(source.length){target.push(layout());restoreLayout(source.pop());changedPiece='';decorMessage=action==='cafe-undo'?'回到刚才的样子啦。':'重新用上这套搭配啦。';save();refreshEditor({action});}return;
+      }
       if(action==='cafe-preview'){const r=C.recipe(id);if(r)play([phonetic(r.audio)],true);return;}
       if(action==='cafe-howto'){play([voice('howto-tap-drag')],true);return;}
       if(screen!=='kitchen'||!p.session)return;
@@ -202,6 +243,6 @@
     }
     return {render,handleAction,stopAudio,toggleSound,status:()=>({served:p.served,sound:p.sound})};
   }
-  root.RestaurantGame={create};
-  if(typeof module!=='undefined')module.exports={create};
+  root.RestaurantGame={create,LOOKS_KEY};
+  if(typeof module!=='undefined')module.exports={create,LOOKS_KEY};
 })(typeof globalThis!=='undefined'?globalThis:window);
